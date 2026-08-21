@@ -1,0 +1,17 @@
+{
+  "name": "IDHelper",
+  "short_name": "IDHelper",
+  "description": "Local-first report annotation assistant for synthetic identifiers.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#102a43",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
