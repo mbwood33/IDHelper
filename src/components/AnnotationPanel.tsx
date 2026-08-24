@@ -12,7 +12,7 @@ function percent(value: number) { return `${Math.round(value * 100)}%`; }
 
 const ID_TYPES: IdType[] = ["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"];
 const ENTITY_CLASSES = [
-  ["named-vessel", "Named vessel / maritime platform"],
+  ["vessel", "Named vessel / maritime platform"],
   ["facility", "Facility / installation / site"],
   ["equipment", "Equipment type / model"],
   ["communications-signal", "Communications signal / emitter"],
