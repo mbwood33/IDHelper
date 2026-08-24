@@ -9,7 +9,7 @@ Reports are analyzed in the browser using deterministic rules and do not need a 
 
 If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
 
-Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose **Generate JSON** to group included values by ID type. A single value is emitted as a string and repeated types as an array; BE+OSUFFIX values are grouped under the `BE` key. The single-line output uses spaces after colons and commas for readability.
+Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose **Generate JSON** to group included values by ID type. A single value is emitted as a string and repeated types as an array; BE+OSUFFIX values are grouped under the `BE` key. The single-line output uses spaces after colons and commas for readability and escapes every quotation mark (for example, `{\"SCONUM\": \"X99999\"}`) so it can be embedded inside a prompt/completion JSON string.
 
 ## Optional local AI
 

@@ -27,7 +27,9 @@ describe("generated ID JSON", () => {
       SCONUM: "X99999",
       BE: ["9999XX9999", "9999-99999 XX999"],
     });
-    expect(serializeGeneratedIdJson(annotations, generated)).toBe('{"SCONUM": "X99999", "BE": ["9999XX9999", "9999-99999 XX999"]}');
+    expect(serializeGeneratedIdJson(annotations, generated)).toBe(
+      '{\\"SCONUM\\": \\"X99999\\", \\"BE\\": [\\"9999XX9999\\", \\"9999-99999 XX999\\"]}',
+    );
     expect(countIncludedGeneratedIds(annotations, generated)).toBe(3);
   });
 

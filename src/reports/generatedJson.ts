@@ -51,12 +51,13 @@ export function serializeGeneratedIdJson(
   generated: GeneratedIdentifiersByAnnotation,
 ): string {
   const entries = Object.entries(buildGeneratedIdJsonObject(annotations, generated));
-  return `{${entries.map(([key, value]) => {
+  const json = `{${entries.map(([key, value]) => {
     const serializedValue = Array.isArray(value)
       ? `[${value.map((item) => JSON.stringify(item)).join(", ")}]`
       : JSON.stringify(value);
     return `${JSON.stringify(key)}: ${serializedValue}`;
   }).join(", ")}}`;
+  return json.replace(/"/g, '\\"');
 }
 
 export function countIncludedGeneratedIds(
