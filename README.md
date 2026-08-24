@@ -4,6 +4,8 @@ IDHelper is a local-first browser application for reviewing one pasted report at
 
 Reports are analyzed in the browser using deterministic rules and do not need a network request.
 
+If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
+
 ## Optional local AI
 
 The full app can run an opt-in WebLLM model in a browser worker through WebGPU. Model files are downloaded only after **Enable local AI** is selected and are cached by the browser. Report text is not sent to a cloud inference service.
@@ -33,7 +35,7 @@ The generated `dist` folder can be deployed to GitHub Pages, Netlify, Cloudflare
 
 ## Locked-down/offline fallback
 
-Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition has the core paste, highlight, review, raw-ID copy, and EQPCODE-prefix features but does not include saved feedback/import-export or a future local-model option.
+Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition includes manual missed-ID annotations, synthetic generation, raw-ID copy, and EQPCODE-prefix selection, but does not include saved feedback/import-export or a local-model option.
 
 ## Deploy to GitHub Pages
 
