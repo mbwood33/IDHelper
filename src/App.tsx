@@ -14,8 +14,14 @@ import { AnnotatedReport } from "./components/AnnotatedReport";
 import { AnnotationPanel } from "./components/AnnotationPanel";
 import { LocalAiProgressPanel } from "./components/LocalAiProgressPanel";
 import { ManualAnnotationForm } from "./components/ManualAnnotationForm";
+import { GeneratedJsonPanel } from "./components/GeneratedJsonPanel";
 import type { AnalysisResult, Annotation, IdRecommendation } from "./components/types";
 import { generateSyntheticId } from "./generators";
+import {
+  countIncludedGeneratedIds,
+  serializeGeneratedIdJson,
+  type GeneratedIdentifiersByAnnotation,
+} from "./reports/generatedJson";
 import {
   createReviewedDecision,
   loadKnowledgeState,
@@ -38,6 +44,8 @@ export default function App({ analyze, generateId }: AppProps) {
   const [selected, setSelected] = useState<Annotation>();
   const [manualSelection, setManualSelection] = useState<{ start: number; end: number; text: string }>();
   const [manualAnnotations, setManualAnnotations] = useState<Annotation[]>([]);
+  const [generatedIds, setGeneratedIds] = useState<GeneratedIdentifiersByAnnotation>({});
+  const [generatedJson, setGeneratedJson] = useState("");
   const [status, setStatus] = useState("Rules-only analyzer ready. No report text leaves this browser.");
   const [busy, setBusy] = useState(false);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -57,6 +65,10 @@ export default function App({ analyze, generateId }: AppProps) {
   const reportInput = useRef<HTMLTextAreaElement>(null);
   const localModel = useRef<LocalModelAnalyzer | null>(null);
   const count = useMemo(() => annotations.length, [annotations]);
+  const includedGeneratedCount = useMemo(
+    () => countIncludedGeneratedIds(annotations, generatedIds),
+    [annotations, generatedIds],
+  );
 
   useEffect(() => {
     let active = true;
@@ -133,6 +145,7 @@ export default function App({ analyze, generateId }: AppProps) {
   }
 
   async function addManualAnnotation(annotation: Annotation) {
+    setGeneratedJson("");
     setManualAnnotations((current) => [
       ...current.filter((item) => item.start !== annotation.start || item.end !== annotation.end),
       annotation,
@@ -161,6 +174,7 @@ export default function App({ analyze, generateId }: AppProps) {
 
   async function runAnalysis() {
     if (!report.trim()) { setStatus("Paste a report before analyzing."); return; }
+    setGeneratedJson("");
     setBusy(true); setSelected(undefined);
     try {
       if (analyze) {
@@ -184,6 +198,7 @@ export default function App({ analyze, generateId }: AppProps) {
   async function runLocalAiAnalysis() {
     if (!report.trim() || localAiState !== "ready" || !localModel.current) return;
     const reportSnapshot = report;
+    setGeneratedJson("");
     const ruleCandidates = mergeCandidates([...analyzeWithRules(reportSnapshot), ...currentManualAnnotations()]);
     setSelected(undefined);
     setAnnotations(ruleCandidates);
@@ -209,7 +224,7 @@ export default function App({ analyze, generateId }: AppProps) {
     }
   }
 
-  function clear() { setReport(""); setAnnotations([]); setManualAnnotations([]); setSelected(undefined); setManualSelection(undefined); setStatus("Cleared. Paste a report to begin."); }
+  function clear() { setReport(""); setAnnotations([]); setManualAnnotations([]); setGeneratedIds({}); setGeneratedJson(""); setSelected(undefined); setManualSelection(undefined); setStatus("Cleared. Paste a report to begin."); }
   async function decide(decision: "accepted" | "rejected") {
     if (!selected) return;
     const reviewed = createReviewedDecision(report, selected, decision, {
@@ -226,6 +241,7 @@ export default function App({ analyze, generateId }: AppProps) {
     }
   }
   async function changeAnnotation(corrected: Annotation, note?: string) {
+    setGeneratedJson("");
     const reviewed = createReviewedDecision(report, corrected, "edited", {
       id: globalThis.crypto?.randomUUID?.() ?? `review-${Date.now()}-${corrected.id}`,
       reviewedAt: new Date().toISOString(),
@@ -249,6 +265,35 @@ export default function App({ analyze, generateId }: AppProps) {
       recommendation.type,
       recommendation.type === "EQPCODE" && isEqpCodePrefix(eqpPrefix) ? { eqpPrefix } : {},
     );
+  }
+  function recordGeneratedId(type: IdRecommendation["type"], value: string) {
+    if (!selected) return;
+    setGeneratedIds((current) => ({
+      ...current,
+      [selected.id]: {
+        ...current[selected.id],
+        [type]: {
+          value,
+          included: current[selected.id]?.[type]?.included ?? true,
+        },
+      },
+    }));
+    setGeneratedJson("");
+  }
+  function setGeneratedIdIncluded(type: IdRecommendation["type"], included: boolean) {
+    if (!selected) return;
+    setGeneratedIds((current) => {
+      const existing = current[selected.id]?.[type];
+      if (!existing) return current;
+      return {
+        ...current,
+        [selected.id]: {
+          ...current[selected.id],
+          [type]: { ...existing, included },
+        },
+      };
+    });
+    setGeneratedJson("");
   }
   function exportKnowledge() {
     const blob = new Blob([serializeKnowledgeBundle(knowledge)], { type: "application/json" });
@@ -283,10 +328,10 @@ export default function App({ analyze, generateId }: AppProps) {
   return <main className="app-shell">
     <header className="topbar"><div className="brand"><span className="brand__mark" aria-hidden="true">ID</span><div><h1>IDHelper</h1><p>Local-first report annotation assistant</p></div></div><div className="status-pills"><span className="status-pill status-pill--ready">● Rules ready</span><span className={`status-pill ${localAiState === "ready" ? "status-pill--ready" : ""}`}>{localAiState === "ready" ? "● Local AI ready" : localAiState === "loading" ? "Local AI loading" : localAiState === "unavailable" ? "WebGPU unavailable" : "Local AI optional"}</span></div></header>
     <section className="intro"><div><p className="eyebrow">One report at a time</p><h2>Find plausible identifiers. Keep the source unchanged.</h2><p>Suggestions are review aids, not a MIDB lookup. Highlighted phrases open a panel where you can generate and copy a raw synthetic ID.</p></div><div className="intro-actions"><div className="intro-links"><button className="text-button" type="button" onClick={() => setReport(sample)}>Load example report</button><button className="text-button" type="button" onClick={exportKnowledge}>Export knowledge</button><button className="text-button" type="button" onClick={() => importInput.current?.click()}>Import knowledge</button></div><label className="ai-control">Local model<select value={localAiModel} disabled={localAiState === "loading" || localAiState === "ready"} onChange={(event) => setLocalAiModel(event.target.value as LocalAiModelId)}>{LOCAL_AI_MODELS.map((model) => <option value={model.id} key={model.id}>{model.label} — {model.requirement}</option>)}</select></label><div className="ai-buttons">{localAiState === "ready" ? <button className="text-button" type="button" disabled={aiAnalyzing} onClick={() => { void unloadLocalAi(); }}>Unload local AI</button> : <button className="text-button" type="button" disabled={localAiState === "loading" || localAiState === "unavailable"} onClick={() => { void enableLocalAi(); }}>{localAiState === "error" ? "Retry local AI" : "Enable local AI"}</button>}{localAiState === "loading" && <button className="text-button" type="button" onClick={stopLocalAi}>Cancel loading</button>}</div><LocalAiProgressPanel progress={localAiProgress} /><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => { void importKnowledge(event.target.files?.[0]); event.target.value = ""; }} /></div></section>
-    <section className="workspace" aria-label="Report workspace"><div className="editor-card"><div className="section-heading"><div><p className="eyebrow">Source report</p><h2>Paste report text</h2></div><span className="char-count">{report.length.toLocaleString()} characters</span></div><label className="sr-only" htmlFor="report">Report text</label><textarea ref={reportInput} id="report" value={report} disabled={aiAnalyzing} onChange={(event) => { setReport(event.target.value); setManualSelection(undefined); }} placeholder="Paste one report here. The original text is never rewritten." spellCheck="true" /><div className="actions"><button className="button button--primary" type="button" disabled={busy || aiAnalyzing || !report.trim()} onClick={runAnalysis}>{busy ? "Analyzing..." : "Analyze with rules"}</button>{localAiState === "ready" && <button className="button button--secondary" type="button" disabled={busy || aiAnalyzing || !report.trim()} onClick={() => { void runLocalAiAnalysis(); }}>{aiAnalyzing ? "Local AI analyzing..." : "Analyze with local AI"}</button>}<button className="button button--secondary" type="button" disabled={busy || aiAnalyzing || !report} onClick={startManualAnnotation}>Add missed ID</button>{aiAnalyzing && <button className="button button--quiet" type="button" onClick={stopLocalAi}>Stop local AI</button>}<button className="button button--quiet" type="button" disabled={busy || aiAnalyzing || (!report && !annotations.length)} onClick={clear}>Clear</button><p className="local-note">Select missed text and add it manually when rules do not find it.</p></div><p className="analysis-status" role="status">{status}</p>{manualSelection && <ManualAnnotationForm report={report} selection={manualSelection} onAdd={(annotation) => { void addManualAnnotation(annotation); }} onCancel={() => setManualSelection(undefined)} />}</div>
+    <section className="workspace" aria-label="Report workspace"><div className="editor-card"><div className="section-heading"><div><p className="eyebrow">Source report</p><h2>Paste report text</h2></div><span className="char-count">{report.length.toLocaleString()} characters</span></div><label className="sr-only" htmlFor="report">Report text</label><textarea ref={reportInput} id="report" value={report} disabled={aiAnalyzing} onChange={(event) => { setReport(event.target.value); setManualSelection(undefined); setGeneratedIds({}); setGeneratedJson(""); }} placeholder="Paste one report here. The original text is never rewritten." spellCheck="true" /><div className="actions"><button className="button button--primary" type="button" disabled={busy || aiAnalyzing || !report.trim()} onClick={runAnalysis}>{busy ? "Analyzing..." : "Analyze with rules"}</button>{localAiState === "ready" && <button className="button button--secondary" type="button" disabled={busy || aiAnalyzing || !report.trim()} onClick={() => { void runLocalAiAnalysis(); }}>{aiAnalyzing ? "Local AI analyzing..." : "Analyze with local AI"}</button>}<button className="button button--secondary" type="button" disabled={busy || aiAnalyzing || !report} onClick={startManualAnnotation}>Add missed ID</button>{aiAnalyzing && <button className="button button--quiet" type="button" onClick={stopLocalAi}>Stop local AI</button>}<button className="button button--quiet" type="button" disabled={busy || aiAnalyzing || (!report && !annotations.length)} onClick={clear}>Clear</button><p className="local-note">Select missed text and add it manually when rules do not find it.</p></div><p className="analysis-status" role="status">{status}</p>{manualSelection && <ManualAnnotationForm report={report} selection={manualSelection} onAdd={(annotation) => { void addManualAnnotation(annotation); }} onCancel={() => setManualSelection(undefined)} />}</div>
       <div className="legend" aria-label="Annotation legend"><span><i className="legend__swatch legend__swatch--vessel" />Vessel / platform</span><span><i className="legend__swatch legend__swatch--facility" />Facility / site</span><span><i className="legend__swatch legend__swatch--equipment" />Equipment / signal</span><span>{count} candidate{count === 1 ? "" : "s"}</span></div>
     </section>
-    <section className="review-grid"><article className="report-card"><div className="section-heading"><div><p className="eyebrow">Read-only result</p><h2>Annotated report</h2></div>{annotations.length > 0 && <span className="keyboard-hint">Tab to highlights, then Enter</span>}</div>{report ? annotations.length ? <AnnotatedReport report={report} annotations={annotations} selectedId={selected?.id} onSelect={setSelected} /> : <div className="empty-report"><strong>No annotations yet</strong><p>Analyze this report to see supported candidate phrases here.</p></div> : <div className="empty-report"><strong>Your report will appear here</strong><p>Paste a report above, then select Analyze report.</p></div>}</article><AnnotationPanel annotation={selected} onDecision={decide} onChange={changeAnnotation} onGenerate={createId} /></section>
+    <section className="review-grid"><article className="report-card"><div className="section-heading"><div><p className="eyebrow">Read-only result</p><h2>Annotated report</h2></div>{annotations.length > 0 && <span className="keyboard-hint">Tab to highlights, then Enter</span>}</div>{report ? annotations.length ? <AnnotatedReport report={report} annotations={annotations} selectedId={selected?.id} onSelect={setSelected} /> : <div className="empty-report"><strong>No annotations yet</strong><p>Analyze this report to see supported candidate phrases here.</p></div> : <div className="empty-report"><strong>Your report will appear here</strong><p>Paste a report above, then select Analyze report.</p></div>}<GeneratedJsonPanel includedCount={includedGeneratedCount} value={generatedJson} onGenerate={() => setGeneratedJson(serializeGeneratedIdJson(annotations, generatedIds))} /></article><AnnotationPanel annotation={selected} onDecision={decide} onChange={changeAnnotation} onGenerate={createId} generatedIds={selected ? generatedIds[selected.id] : undefined} onGenerated={recordGeneratedId} onInclusionChange={setGeneratedIdIncluded} /></section>
     <footer>Rules-only analysis is always available. Local AI runs in a browser worker and never uploads report text.</footer>
   </main>;
 }

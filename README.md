@@ -9,6 +9,8 @@ Reports are analyzed in the browser using deterministic rules and do not need a 
 
 If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
 
+Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose **Generate JSON** to group included values by ID type. A single value is emitted as a string and repeated types as an array; BE+OSUFFIX values are grouped under the `BE` key. The single-line output uses spaces after colons and commas for readability.
+
 ## Optional local AI
 
 The full app can run an opt-in WebLLM model in a browser worker through WebGPU. Model files are downloaded only after **Enable local AI** is selected and are cached by the browser. Report text is not sent to a cloud inference service.

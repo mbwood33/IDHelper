@@ -48,3 +48,14 @@ textarea:disabled { color:#52636e; background:#f2f5f5; }
 .manual-editor .correction-types label { display:flex; align-items:center; gap:5px; font-weight:500; }
 .manual-editor .correction-problem { margin:10px 0; font-size:.82rem; }
 @media (max-width:720px) { .manual-editor__grid { grid-template-columns:1fr; } }
+.json-inclusion { display:flex; align-items:center; gap:7px; margin-top:10px; color:#405c69; font-size:.76rem; font-weight:650; }
+.json-inclusion input { margin:0; }
+.json-export { margin-top:24px; padding-top:20px; border-top:1px solid #dce5e7; }
+.json-export__heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.json-export__heading h3 { margin:0; color:#173f52; font-size:1rem; }
+.json-export__heading > span { padding:4px 7px; color:#526d4a; background:#edf7ea; border-radius:999px; font-size:.72rem; white-space:nowrap; }
+.json-export > p:not(.eyebrow) { margin:9px 0 13px; color:#5d707b; font-size:.8rem; line-height:1.45; }
+.json-export code { color:#264d60; }
+.json-export__output { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:start; margin-top:12px; }
+.json-export__output textarea { min-height:70px; margin:0; padding:10px; resize:vertical; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:.78rem; line-height:1.45; }
+@media (max-width:520px) { .json-export__output { grid-template-columns:1fr; } }
