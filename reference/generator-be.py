@@ -51,15 +51,7 @@ for _ in range(5000):
     ben = generate_ben()
     if random.random() > 0.5:
         osuffix = generate_osuffix()
-        rand = random.random()
-        joiner = ''
-        if rand < 0.1:
-            joiner = '/'
-        elif rand < 0.2:
-            joiner = '-'
-        elif rand < 0.3:
-            joiner = ' '
-        full = ben + joiner + osuffix
+        full = ben + ' ' + osuffix
         items.append({'name': 'full', 'ben': ben, 'osuffix': osuffix, 'full': full, 'parsed': {'wac': ben[:4], 'installation': ben[4:], 'osuffix': osuffix, 'agency': osuffix[:2], 'sequential': osuffix[2:]}})
     else:
         full = ben

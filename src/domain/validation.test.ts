@@ -7,10 +7,7 @@ describe("synthetic identifier validation", () => {
     expect(isValidSyntheticId("BE", "4821QP7390")).toBe(true);
     expect(isValidSyntheticId("BE", "4821-73904")).toBe(true);
     expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390 RT204")).toBe(true);
-    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390RT204")).toBe(true);
-    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390/RT204")).toBe(true);
-    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390-RT204")).toBe(true);
-    expect(isValidSyntheticId("BE_OSUFFIX", "4821-73904RT204")).toBe(true);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821-73904 RT204")).toBe(true);
     expect(isValidSyntheticId("SK", "00001234567890")).toBe(true);
     expect(isValidSyntheticId("CENOT", "RT204")).toBe(true);
     expect(isValidSyntheticId("ELNOT", "R204T")).toBe(true);
@@ -26,6 +23,9 @@ describe("synthetic identifier validation", () => {
   it("rejects prohibited formats", () => {
     expect(isValidSyntheticId("SK", "1234567890123")).toBe(false);
     expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390_RT204")).toBe(false);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390RT204")).toBe(false);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390/RT204")).toBe(false);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390-RT204")).toBe(false);
     expect(isValidSyntheticId("ELNOT", "RT204")).toBe(false);
     expect(isValidSyntheticId("EQPCODE", "X0000")).toBe(false);
     expect(isValidSyntheticId("BE", "4821123456")).toBe(false);

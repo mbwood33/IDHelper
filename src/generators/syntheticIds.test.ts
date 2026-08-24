@@ -39,13 +39,13 @@ describe("synthetic ID generators", () => {
     }
   });
 
-  it("matches every BE/OSUFFIX joiner emitted by generator-be.py", () => {
-    (["", "/", "-", " "] as const).forEach((joiner) => {
-      const value = generateBeNumberWithOsuffix("ALPHANUMERIC", joiner);
-      expect(value).toMatch(new RegExp(`^\\d{4}[A-Z]{2}\\d{4}${joiner === "" ? "" : `\\${joiner}`}[A-Z]{2}\\d{3}$`));
-      expect(isValidSyntheticId("BE_OSUFFIX", value)).toBe(true);
-    });
-    expect(generateBeNumberWithOsuffix("DASHED", "")).toMatch(/^\d{4}-\d{5}[A-Z]{2}\d{3}$/);
+  it("always separates a BE Number and OSUFFIX with one space", () => {
+    const alphanumeric = generateBeNumberWithOsuffix("ALPHANUMERIC");
+    const dashed = generateBeNumberWithOsuffix("DASHED");
+    expect(alphanumeric).toMatch(/^\d{4}[A-Z]{2}\d{4} [A-Z]{2}\d{3}$/);
+    expect(dashed).toMatch(/^\d{4}-\d{5} [A-Z]{2}\d{3}$/);
+    expect(isValidSyntheticId("BE_OSUFFIX", alphanumeric)).toBe(true);
+    expect(isValidSyntheticId("BE_OSUFFIX", dashed)).toBe(true);
   });
 
   it("honors every selected EQPCODE prefix", () => {

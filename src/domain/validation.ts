@@ -4,7 +4,7 @@ import { ID_TYPES, type CandidateAnnotation, type IdType } from "./types";
 const PATTERNS: Readonly<Record<IdType, RegExp>> = {
   SCONUM: /^[A-Z]\d{5}$/,
   BE: /^(?:\d{4}[A-Z]{2}\d{4}|\d{4}-\d{5})$/,
-  BE_OSUFFIX: /^(?:\d{4}[A-Z]{2}\d{4}|\d{4}-\d{5})(?:[ /-]?)[A-Z]{2}\d{3}$/,
+  BE_OSUFFIX: /^(?:\d{4}[A-Z]{2}\d{4}|\d{4}-\d{5}) [A-Z]{2}\d{3}$/,
   SK: /^\d{14}$/,
   EQPCODE: /^(?:[A-HJ-Z]|9)(?:[A-Z]{4}|[A-Z]{3}\d|[A-Z]{2}\d{2})$/,
   CENOT: /^(?:[A-Z]{2}\d{3}|[A-Z]\d{3}[A-Z]|[A-Z]\d{4}|\d{5})$/,

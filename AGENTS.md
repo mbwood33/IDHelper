@@ -136,8 +136,8 @@ Do not generate an `I` prefix or any prefix not listed above.
 ### OSUFFIX
 
 - Pattern: `XX000`
-- When present, join it to the BE Number using no separator most often; `/`, `-`, and one space are each less common alternatives.
-- Examples: `4821QP7390RT204`, `4821QP7390/RT204`, `4821QP7390-RT204`, `4821QP7390 RT204`
+- When present, join it to the BE Number using exactly one space.
+- Examples: `4821QP7390 RT204`, `4821-73904 RT204`
 
 ### SK
 

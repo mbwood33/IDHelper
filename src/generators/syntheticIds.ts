@@ -3,7 +3,6 @@ import {
   EQPCODE_PREFIXES,
   SIGNOT_FORMS,
   type CenotForm,
-  type BeOsuffixJoiner,
   type ElnotForm,
   type EqpCodeBodyForm,
   type EqpCodePrefix,
@@ -69,10 +68,8 @@ export function generateOsuffix(): string {
 
 export function generateBeNumberWithOsuffix(
   form?: GenerateIdOptions["beForm"],
-  joiner?: BeOsuffixJoiner,
 ): string {
-  const selectedJoiner = joiner ?? (["/", "-", " ", ""] as const)[weightedIndex([1, 1, 1, 7])];
-  return `${generateBeNumber(form)}${selectedJoiner}${generateOsuffix()}`;
+  return `${generateBeNumber(form)} ${generateOsuffix()}`;
 }
 
 export function generateSk(): string {
@@ -102,7 +99,7 @@ export function generateSyntheticId(type: IdType, options: GenerateIdOptions = {
   switch (type) {
     case "SCONUM": return generateSconum();
     case "BE": return generateBeNumber(options.beForm);
-    case "BE_OSUFFIX": return generateBeNumberWithOsuffix(options.beForm, options.beOsuffixJoiner);
+    case "BE_OSUFFIX": return generateBeNumberWithOsuffix(options.beForm);
     case "SK": return generateSk();
     case "EQPCODE": return generateEqpCode(options.eqpPrefix, options.eqpBodyForm);
     case "CENOT": return generateCenot(options.cenotForm);

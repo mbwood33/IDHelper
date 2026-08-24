@@ -3,6 +3,7 @@
 IDHelper is a local-first browser application for reviewing one pasted report at a time. It highlights text that may be associated with SCONUM, BE/OSUFFIX, SK, EQPCODE, CENOT, or ELNOT identifiers, then generates a copyable synthetic identifier that matches the selected format.
 
 Synthetic BE Numbers use only `9999XX9999` or `9999-99999`, where `9` is a digit and `X` is an uppercase letter.
+BE Number + OSUFFIX values always use one space between the two parts, such as `9999XX9999 XX999` or `9999-99999 XX999`.
 
 Reports are analyzed in the browser using deterministic rules and do not need a network request.
 
