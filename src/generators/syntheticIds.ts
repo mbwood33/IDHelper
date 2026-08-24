@@ -56,19 +56,11 @@ export function generateSconum(): string {
 }
 
 export function generateBeNumber(form?: GenerateIdOptions["beForm"]): string {
-  if (form === "NUMERIC") return `${digits(4)}${digits(6)}`;
-  if (form === "SINGLE_ALPHA") return `${digits(4)}${letters(1)}${digits(5)}`;
-  if (form === "ALPHANUMERIC") return `${digits(4)}${letters(2)}${digits(4)}`;
   if (form === "DASHED") return `${digits(4)}-${digits(5)}`;
-  if (form === "DASHED_ALPHA") return `${digits(4)}-${letters(1)}${digits(4)}`;
-
-  const installation = [
-    digits(6),
-    `${letters(1)}${digits(5)}`,
-    `${letters(2)}${digits(4)}`,
-  ][secureIndex(3)];
-  const ben = `${digits(4)}${installation}`;
-  return secureIndex(1_000) < 33 ? `${ben.slice(0, 4)}-${ben.slice(5)}` : ben;
+  if (form === "ALPHANUMERIC") return `${digits(4)}${letters(2)}${digits(4)}`;
+  return secureIndex(2) === 0
+    ? `${digits(4)}${letters(2)}${digits(4)}`
+    : `${digits(4)}-${digits(5)}`;
 }
 
 export function generateOsuffix(): string {

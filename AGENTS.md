@@ -128,13 +128,10 @@ Do not generate an `I` prefix or any prefix not listed above.
 
 ### BE Number
 
-- Pattern: `0000000000`
-- Pattern: `0000X00000`
 - Pattern: `0000XX0000`
 - Pattern: `0000-00000`
-- Pattern: `0000-X0000`
-- Examples: `4821123456`, `4821Q73904`, `4821QP7390`, `4821-73904`, `4821-Q7390`
-- Default random generation follows `reference/generator-be.py`: the three installation forms are equally likely before a 3.3% fifth-character replacement with `-`.
+- Examples: `4821QP7390`, `4821-73904`
+- Default random generation chooses between the two approved forms.
 
 ### OSUFFIX
 

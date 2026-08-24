@@ -8,11 +8,7 @@ BE Number
 
 TARGETING AND THE TARGET 
 1.7.3. Fixed Target Identification Data. Because of the great amount of intelligence available, large numbers of potential targets, and a variety of data bases, it is essential to have a standard refer-ence system. Fixed targets are listed, described, and indexed through five basic elements of information, they are: the basic encyclopedia (BE) number, the functional classification code, the target name, the geographic coordinate, and a two- character geopolitical (or country) code. (Refer to the Target Intelligence Handbook [TIHB] [DDB- 2600- 312- YR]).
-1.7.3.1. Basic Encyclopedia (BE) Numbers (BEN). The ten- character BE number has two parts: the World Aeronautical Chart (WAC) number, which consists of four characters; and the installation number, which consists of either six numeric characters, one alpha and five numeric characters, or two alpha and four numeric characters. A BE number may be used as follows:
-1.7.3.1.1. Standard BE numbers. Most installations in the Automated Installation Intelli-gence File have a BE number with a zero in the fifth character- position. Standard BE numbers are assigned sequentially by the producer. The exceptions are airfields and electronic sites. 
-1.7.3.1.2. Non- DIA Produced BE Numbers. An installation discovered by non- DIA ele-ments and reported for inclusion in the Modernized Integrated Data Base (MIDB) is identified by a BE number that carries alpha characters in the fifth and sixth character positions. These characters represent the exploitation element that assigned the number and controls it.
-1.7.3.1.3. Electronic BE Numbers. The BE numbers for a non- communication electronic installation consists of the WAC number, with an "E" in the fifth character position, and a five- digit EOB site number.
-1.7.3.1.4. Fictitious BE Numbers. The BE number for a fictitious (projected) installation has an "F" in the fifth character position. This is useful for exercise databases or for unclassified exercise scenarios.
+1.7.3.1. Basic Encyclopedia (BE) Numbers (BEN). For this synthetic generator, the only approved shapes are four digits, two uppercase letters, and four digits; or four digits, a dash, and five digits.
 1.7.3.2. Functional Classification Codes. Each installation is classified or categorized to reflect products and military activity supported, etc. They are categorized by a five- digit code, as fol-lows:
 1.7.3.2.1. The first digit gives the function in nine major categories. The other four digits show functions within the group. From left to right, each one describes the function or capa-bility of the installation more specifically. A code is assigned to each fixed facility that has some significance. The functional code for a mobile system (e. g., SAM, AAA, GCI, etc.) is assigned to the specific area that the system supports or where the activity is located (rather than the equipment itself). See DIAM 65- 3- 1 for these functional classification codes, com-monly known as category codes.
 EXAMPLE: 80052
@@ -39,21 +35,10 @@ AANNN
 The BE_NUMBER and OSUFFIX can be combined into 15 character BE_NUMBER.
 '''
 
-INDICATE_FAKE = False
-
 def generate_ben():
-    wac = ''.join(random.choices(string.digits, k=4))
-    install_types = [
-        ''.join(random.choices(string.digits, k=6)),  # 6 digits
-        random.choice(string.ascii_uppercase) + ''.join(random.choices(string.digits, k=5)),  # A + 5 digits
-        ''.join(random.choices(string.ascii_uppercase, k=2)) + ''.join(random.choices(string.digits, k=4))  # AA + 4 digits
-    ]
-    install = random.choice(install_types)
-    ben = wac + install
-    if random.random() < 0.033:
-        # randomly replace the 5th character in the middle of ben with an '-'
-        ben = ben[:4] + '-' + ben[5:]
-    return ben
+    if random.choice((True, False)):
+        return ''.join(random.choices(string.digits, k=4)) + ''.join(random.choices(string.ascii_uppercase, k=2)) + ''.join(random.choices(string.digits, k=4))
+    return ''.join(random.choices(string.digits, k=4)) + '-' + ''.join(random.choices(string.digits, k=5))
 
 def generate_osuffix():
     agency = ''.join(random.choices(string.ascii_uppercase, k=2))
@@ -64,9 +49,6 @@ def generate_osuffix():
 items = []
 for _ in range(5000):
     ben = generate_ben()
-    if INDICATE_FAKE:
-        # replace the 5th character in the middle of ben with an 'F'
-        ben = ben[:4] + 'F' + ben[5:]
     if random.random() > 0.5:
         osuffix = generate_osuffix()
         rand = random.random()

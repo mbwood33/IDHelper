@@ -62,7 +62,7 @@ export type CenotForm = (typeof SIGNOT_FORMS)[number];
 export const ELNOT_FORMS = ["X000X", "X0000", "00000"] as const;
 export type ElnotForm = (typeof ELNOT_FORMS)[number];
 
-export type BeNumberForm = "NUMERIC" | "SINGLE_ALPHA" | "ALPHANUMERIC" | "DASHED" | "DASHED_ALPHA";
+export type BeNumberForm = "ALPHANUMERIC" | "DASHED";
 export type BeOsuffixJoiner = "" | "/" | "-" | " ";
 export type EqpCodeBodyForm = "XXXX" | "XXX0" | "XX00";
 

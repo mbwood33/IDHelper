@@ -2,6 +2,8 @@
 
 IDHelper is a local-first browser application for reviewing one pasted report at a time. It highlights text that may be associated with SCONUM, BE/OSUFFIX, SK, EQPCODE, CENOT, or ELNOT identifiers, then generates a copyable synthetic identifier that matches the selected format.
 
+Synthetic BE Numbers use only `9999XX9999` or `9999-99999`, where `9` is a digit and `X` is an uppercase letter.
+
 Reports are analyzed in the browser using deterministic rules and do not need a network request.
 
 If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
