@@ -84,7 +84,7 @@ Named instances and equipment types can occupy different spans. In `containershi
 
 ### EQPCODE prefixes
 
-Generate EQPCODE as one approved prefix followed by four digits. The analyzer should recommend a prefix category and confidence, while the user can override it before generation.
+Generate EQPCODE as one approved prefix followed by a four-character body. The analyzer should recommend a prefix category and confidence, while the user can override it before generation.
 
 | Prefix | Category |
 | --- | --- |
@@ -128,15 +128,19 @@ Do not generate an `I` prefix or any prefix not listed above.
 
 ### BE Number
 
+- Pattern: `0000000000`
+- Pattern: `0000X00000`
 - Pattern: `0000XX0000`
 - Pattern: `0000-00000`
-- Examples: `4821QP7390`, `4821-73904`
+- Pattern: `0000-X0000`
+- Examples: `4821123456`, `4821Q73904`, `4821QP7390`, `4821-73904`, `4821-Q7390`
+- Default random generation follows `reference/generator-be.py`: the three installation forms are equally likely before a 3.3% fifth-character replacement with `-`.
 
 ### OSUFFIX
 
 - Pattern: `XX000`
-- When present, append it after the BE Number with one space.
-- Examples: `4821QP7390 RT204`, `4821-73904 RT204`
+- When present, join it to the BE Number using no separator most often; `/`, `-`, and one space are each less common alternatives.
+- Examples: `4821QP7390RT204`, `4821QP7390/RT204`, `4821QP7390-RT204`, `4821QP7390 RT204`
 
 ### SK
 
@@ -146,19 +150,21 @@ Do not generate an `I` prefix or any prefix not listed above.
 
 ### EQPCODE
 
-- One approved category prefix followed by four digits.
-- Examples: `G4821`, `X7390`, `90004`.
-- The earlier tentative `XX0000` form is not approved and must not be generated.
+- One approved category prefix followed by four additional characters.
+- The body is four letters most often; three letters plus one digit and two letters plus two digits are less common alternatives.
+- Examples: `XMAXQ`, `MSXFO`, `DJT93`.
 
 ### CENOT
 
 - `XX000` is the most common form.
 - Also allow `X000X`, `X0000`, and `00000`.
+- Default weighting follows `reference/generator-cenot.py`: 5:2:1:1 in the order above.
 
 ### ELNOT
 
 - `X000X` is the most common form.
 - Also allow `X0000` and `00000`.
+- Default weighting follows `reference/generator-elnot.py`: 3:1:1 in the order above.
 
 ### Generator requirements
 

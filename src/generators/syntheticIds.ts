@@ -3,7 +3,9 @@ import {
   EQPCODE_PREFIXES,
   SIGNOT_FORMS,
   type CenotForm,
+  type BeOsuffixJoiner,
   type ElnotForm,
+  type EqpCodeBodyForm,
   type EqpCodePrefix,
   type GenerateIdOptions,
   type IdType,
@@ -39,36 +41,68 @@ function signot(form: CenotForm | ElnotForm): string {
   return [...form].map((character) => (character === "X" ? letters(1) : digits(1))).join("");
 }
 
+function weightedIndex(weights: readonly number[]): number {
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let choice = secureIndex(total);
+  for (let index = 0; index < weights.length; index += 1) {
+    if (choice < weights[index]) return index;
+    choice -= weights[index];
+  }
+  return weights.length - 1;
+}
+
 export function generateSconum(): string {
   return `${letters(1)}${digits(5)}`;
 }
 
-export function generateBeNumber(form: GenerateIdOptions["beForm"] = "ALPHANUMERIC"): string {
-  return form === "DASHED" ? `${digits(4)}-${digits(5)}` : `${digits(4)}${letters(2)}${digits(4)}`;
+export function generateBeNumber(form?: GenerateIdOptions["beForm"]): string {
+  if (form === "NUMERIC") return `${digits(4)}${digits(6)}`;
+  if (form === "SINGLE_ALPHA") return `${digits(4)}${letters(1)}${digits(5)}`;
+  if (form === "ALPHANUMERIC") return `${digits(4)}${letters(2)}${digits(4)}`;
+  if (form === "DASHED") return `${digits(4)}-${digits(5)}`;
+  if (form === "DASHED_ALPHA") return `${digits(4)}-${letters(1)}${digits(4)}`;
+
+  const installation = [
+    digits(6),
+    `${letters(1)}${digits(5)}`,
+    `${letters(2)}${digits(4)}`,
+  ][secureIndex(3)];
+  const ben = `${digits(4)}${installation}`;
+  return secureIndex(1_000) < 33 ? `${ben.slice(0, 4)}-${ben.slice(5)}` : ben;
 }
 
 export function generateOsuffix(): string {
   return `${letters(2)}${digits(3)}`;
 }
 
-export function generateBeNumberWithOsuffix(form: GenerateIdOptions["beForm"] = "ALPHANUMERIC"): string {
-  return `${generateBeNumber(form)} ${generateOsuffix()}`;
+export function generateBeNumberWithOsuffix(
+  form?: GenerateIdOptions["beForm"],
+  joiner?: BeOsuffixJoiner,
+): string {
+  const selectedJoiner = joiner ?? (["/", "-", " ", ""] as const)[weightedIndex([1, 1, 1, 7])];
+  return `${generateBeNumber(form)}${selectedJoiner}${generateOsuffix()}`;
 }
 
 export function generateSk(): string {
   return digits(14);
 }
 
-export function generateEqpCode(prefix?: EqpCodePrefix): string {
-  return `${prefix ?? EQPCODE_PREFIXES[secureIndex(EQPCODE_PREFIXES.length)]}${digits(4)}`;
+export function generateEqpCode(prefix?: EqpCodePrefix, bodyForm?: EqpCodeBodyForm): string {
+  const selectedForm = bodyForm ?? (["XXXX", "XXX0", "XX00"] as const)[weightedIndex([3, 1, 1])];
+  const body = selectedForm === "XXXX"
+    ? letters(4)
+    : selectedForm === "XXX0"
+      ? `${letters(3)}${digits(1)}`
+      : `${letters(2)}${digits(2)}`;
+  return `${prefix ?? EQPCODE_PREFIXES[secureIndex(EQPCODE_PREFIXES.length)]}${body}`;
 }
 
-export function generateCenot(form: CenotForm = SIGNOT_FORMS[0]): string {
-  return signot(form);
+export function generateCenot(form?: CenotForm): string {
+  return signot(form ?? SIGNOT_FORMS[weightedIndex([5, 2, 1, 1])]);
 }
 
-export function generateElnot(form: ElnotForm = ELNOT_FORMS[0]): string {
-  return signot(form);
+export function generateElnot(form?: ElnotForm): string {
+  return signot(form ?? ELNOT_FORMS[weightedIndex([3, 1, 1])]);
 }
 
 /** Generates a raw synthetic identifier and never adds a presentation label. */
@@ -76,9 +110,9 @@ export function generateSyntheticId(type: IdType, options: GenerateIdOptions = {
   switch (type) {
     case "SCONUM": return generateSconum();
     case "BE": return generateBeNumber(options.beForm);
-    case "BE_OSUFFIX": return generateBeNumberWithOsuffix(options.beForm);
+    case "BE_OSUFFIX": return generateBeNumberWithOsuffix(options.beForm, options.beOsuffixJoiner);
     case "SK": return generateSk();
-    case "EQPCODE": return generateEqpCode(options.eqpPrefix);
+    case "EQPCODE": return generateEqpCode(options.eqpPrefix, options.eqpBodyForm);
     case "CENOT": return generateCenot(options.cenotForm);
     case "ELNOT": return generateElnot(options.elnotForm);
   }

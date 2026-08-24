@@ -50,6 +50,7 @@ GitHub Pages receives only the static application files. IDHelper does not send 
 - Selecting a highlighted phrase such as `Erving` shows the possible ID types.
 - Generating and copying a value copies only the identifier, such as `A48217`.
 - Generated values are synthetic, format-conforming placeholders.
+- BE/OSUFFIX, EQPCODE, CENOT, and ELNOT generation follows the corresponding Python generators in `reference/`, including their supported shapes and weighting.
 - The pasted report is never rewritten by analysis or ID generation.
 - Runs of underscores are preserved in the source and treated as unreliable legacy hints.
 

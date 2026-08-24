@@ -5,22 +5,31 @@ describe("synthetic identifier validation", () => {
   it("accepts each allowed identifier shape", () => {
     expect(isValidSyntheticId("SCONUM", "A48217")).toBe(true);
     expect(isValidSyntheticId("BE", "4821QP7390")).toBe(true);
+    expect(isValidSyntheticId("BE", "4821123456")).toBe(true);
+    expect(isValidSyntheticId("BE", "4821Q73904")).toBe(true);
     expect(isValidSyntheticId("BE", "4821-73904")).toBe(true);
+    expect(isValidSyntheticId("BE", "4821-Q7390")).toBe(true);
     expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390 RT204")).toBe(true);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390RT204")).toBe(true);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390/RT204")).toBe(true);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390-RT204")).toBe(true);
     expect(isValidSyntheticId("SK", "00001234567890")).toBe(true);
     expect(isValidSyntheticId("CENOT", "RT204")).toBe(true);
     expect(isValidSyntheticId("ELNOT", "R204T")).toBe(true);
+    expect(isValidSyntheticId("EQPCODE", "XMAXQ")).toBe(true);
+    expect(isValidSyntheticId("EQPCODE", "DJT93")).toBe(true);
   });
 
   it("accepts every approved EQPCODE prefix and rejects I", () => {
-    EQPCODE_PREFIXES.forEach((prefix) => expect(isValidSyntheticId("EQPCODE", `${prefix}0000`)).toBe(true));
-    expect(isValidSyntheticId("EQPCODE", "I0000")).toBe(false);
+    EQPCODE_PREFIXES.forEach((prefix) => expect(isValidSyntheticId("EQPCODE", `${prefix}AAAA`)).toBe(true));
+    expect(isValidSyntheticId("EQPCODE", "IAAAA")).toBe(false);
   });
 
   it("rejects prohibited formats", () => {
     expect(isValidSyntheticId("SK", "1234567890123")).toBe(false);
-    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390RT204")).toBe(false);
+    expect(isValidSyntheticId("BE_OSUFFIX", "4821QP7390_RT204")).toBe(false);
     expect(isValidSyntheticId("ELNOT", "RT204")).toBe(false);
+    expect(isValidSyntheticId("EQPCODE", "X0000")).toBe(false);
   });
 });
 
