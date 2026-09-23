@@ -1,11 +1,21 @@
 import { cloneKnowledgeState, isKnowledgeState } from "./bundle";
 import { EMPTY_KNOWLEDGE_STATE, type KnowledgeState } from "./types";
 
+/** Browser-local database namespace; changing it would intentionally isolate old data. */
 const DATABASE_NAME = "idhelper";
+/** IndexedDB schema revision used to trigger object-store creation upgrades. */
 const DATABASE_VERSION = 1;
+/** Object store containing the application's single serialized knowledge state. */
 const STORE_NAME = "knowledge";
+/** Singleton record key because IDHelper stores one current knowledge document. */
 const STATE_KEY = "current";
 
+/**
+ * Opens (and, on first run, creates) the application's IndexedDB database.
+ *
+ * @returns A live database connection which callers must close.
+ * @throws {Error} When IndexedDB is blocked, unavailable, or cannot be opened.
+ */
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
@@ -13,6 +23,8 @@ function openDatabase(): Promise<IDBDatabase> {
       return;
     }
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+    // This event runs only while opening a new database version. The conditional
+    // makes the operation safe if a browser retries or upgrades an existing DB.
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME);
     };
@@ -21,6 +33,14 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
+/**
+ * Reads the singleton knowledge record from IndexedDB.
+ *
+ * @returns A defensive copy of the saved state, or a fresh empty state if no
+ * valid record exists. Returning a copy prevents UI mutations from bypassing
+ * validation and persistence.
+ * @throws {Error} When the database cannot be opened or read.
+ */
 export async function loadKnowledgeState(): Promise<KnowledgeState> {
   const db = await openDatabase();
   try {
@@ -34,7 +54,14 @@ export async function loadKnowledgeState(): Promise<KnowledgeState> {
   }
 }
 
-/** Replaces local knowledge only after an import has been parsed and confirmed by the UI. */
+/**
+ * Atomically replaces the singleton local knowledge record.
+ *
+ * @param state Validated state to persist. The function clones it before
+ * writing so callers cannot mutate the stored object by reference.
+ * @throws {TypeError} When `state` fails runtime schema validation.
+ * @throws {Error} When IndexedDB cannot be opened or written.
+ */
 export async function saveKnowledgeState(state: KnowledgeState): Promise<void> {
   if (!isKnowledgeState(state)) throw new TypeError("Cannot save invalid knowledge state.");
   const db = await openDatabase();
@@ -49,6 +76,10 @@ export async function saveKnowledgeState(state: KnowledgeState): Promise<void> {
   }
 }
 
+/**
+ * Replaces all local feedback and overrides with a fresh empty state.
+ * This is recoverable only if the user previously exported their knowledge.
+ */
 export async function resetKnowledgeState(): Promise<void> {
   await saveKnowledgeState(EMPTY_KNOWLEDGE_STATE);
 }

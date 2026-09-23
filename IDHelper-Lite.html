@@ -1,11 +1,170 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IDHelper Lite</title><style>
-:root{font-family:system-ui,sans-serif;color:#162235;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1200px;margin:auto;padding:24px}h1{margin:0}p{line-height:1.45;color:#536277}.notice,.card{background:#fff;border:1px solid #cfd9e7;border-radius:9px;padding:14px}.notice{background:#e8f1ff;margin:14px 0}textarea{width:100%;min-height:220px;padding:12px;border:1px solid #9eacbf;border-radius:8px;font:1rem ui-monospace,monospace;resize:vertical}label{display:block;font-weight:650;margin:14px 0 7px}button,select{font:inherit}button{padding:8px 12px;border:1px solid #2565a7;border-radius:7px;background:#155eae;color:#fff;font-weight:650;cursor:pointer}button.secondary{background:#fff;color:#1f4e86}.actions{display:flex;gap:8px;margin:12px 0}.status{min-height:1.5em;color:#536277}.grid{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;margin-top:14px}.report{white-space:pre-wrap;word-break:break-word;min-height:150px}.empty{color:#68778b;font-style:italic}.mark{font:inherit;color:inherit;background:#e0f0ff;border:0;border-bottom:2px solid #1975c1;border-radius:3px;padding:0 2px;cursor:pointer}.mark:focus,.mark:hover{outline:3px solid #83c3ff;background:#c6e6ff}.mark.facility{background:#f1e8fc;border-color:#7e4ab5}.mark.equipment{background:#fff0dc;border-color:#a15b0a}.mark.signal{background:#fde9f1;border-color:#aa245d}.legend,.chips,.generator{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.legend{font-size:.85rem;margin-bottom:10px}.dot{width:11px;height:11px;border-radius:50%;display:inline-block;background:#1975c1}.chip{background:#edf2f8;border-radius:12px;padding:3px 7px;font-size:.8rem}.choice{border-top:1px solid #dce3ee;padding:12px 0}.choice h3{margin:0 0 4px;font-size:1rem}.choice p,.small{font-size:.88rem;margin:4px 0;color:#536277}.output{font-family:ui-monospace,monospace;font-weight:700;padding:6px 8px;background:#edf2f8;border-radius:5px;min-width:110px}.manual{border-top:1px solid #dce3ee;padding-top:12px}.manual select,.prefix{padding:7px;max-width:100%}@media(max-width:800px){.shell{padding:14px}.grid{grid-template-columns:1fr}}
-</style></head><body><main class="shell"><h1>IDHelper Lite</h1><p>Offline, rules-only review aid. Suggestions are editable and do not look up real identifiers.</p><div class="notice">No model, network request, or external dependency. This file works directly from <code>file://</code>.</div><label for="input">Report</label><textarea id="input" placeholder="Paste one report here…"></textarea><div class="actions"><button id="analyze">Analyze report</button><button id="clear" class="secondary">Clear</button></div><div id="status" class="status" aria-live="polite"></div><div class="grid"><section class="card"><h2>Annotated report</h2><div class="legend">Blue: vessel · Purple: facility · Orange: equipment · Pink: signal/emitter</div><div id="report" class="report empty">Analyze a report to see suggestions here.</div></section><aside id="details" class="card" aria-live="polite"><h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p></aside></div></main><script>
-(()=>{'use strict';const $=x=>document.getElementById(x),input=$('input'),out=$('report'),panel=$('details'),status=$('status'),letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';const prefixes={A:'Aircraft — Fixed Wing',B:'Aircraft — Rotary Wing',C:'Naval Ships — Combatant Ship',D:'Naval Ships — Combatant Craft',E:'Naval Ships — Auxiliary Ship',F:'Naval Ships — Support Craft',G:'Merchant/Fishing/Research/Special-Purpose Ship',H:'Optics',J:'Engines & Propulsion',K:'Space Objects & Launch Vehicles',L:'Associated/Miscellaneous Equipment',M:'Antitank Weapons',N:'Armored Vehicles',O:'Mortars',P:'Tanks',Q:'General Purpose Vehicles',R:'Special Purpose Vehicles',S:'Engineering Equipment',T:'Air Defense Weapons',U:'Field Artillery/Surface Bombardment/Torpedo Tubes',V:'Surface-to-Surface Missile Launchers',W:'Small Arms',X:'Radars/Electronic Warfare/Remote Detection',Y:'Communications & ADP',Z:'Missiles/Ammunition',9:'File Administrative Entries'};let all=[],current;
-const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function rnd(n){if(window.crypto&&window.crypto.getRandomValues){let a=new Uint32Array(n);window.crypto.getRandomValues(a);return [...a]}return Array.from({length:n},()=>Math.floor(Math.random()*4294967296))}function gen(t,p){let r=rnd(30),d=n=>r.splice(0,n).map(x=>x%10).join(''),l=n=>r.splice(0,n).map(x=>letters[x%26]).join('');if(t==='SCONUM')return l(1)+d(5);if(t==='BE'){let install=[d(6),l(1)+d(5),l(2)+d(4)][r.shift()%3],ben=d(4)+install;return r.shift()%1000<33?ben.slice(0,4)+'-'+ben.slice(5):ben}if(t==='BE_OSUFFIX'){let j=['/','-',' ','','','','','','',''][r.shift()%10];return gen('BE')+j+l(2)+d(3)}if(t==='SK')return d(14);if(t==='EQPCODE'){let n=r.shift()%5,b=n<3?l(4):n===3?l(3)+d(1):l(2)+d(2),q=Object.keys(prefixes);return(prefixes[p]?p:q[r.shift()%q.length])+b}let n=r.shift(),f=t==='CENOT'?['XX000','XX000','XX000','XX000','XX000','X000X','X000X','X0000','00000'][n%9]:['X000X','X000X','X000X','X0000','00000'][n%5];return f.replace(/[X0]/g,x=>x==='X'?l(1):d(1))}
-function add(list,s,e,kind,types,reason,prefix){if(s>=0&&e>s&&!list.some(x=>x.start===s&&x.end===e))list.push({id:'c'+list.length,start:s,end:e,text:input.value.slice(s,e),kind,types,reason,prefix})}function analysis(t){let clean=t.replace(/_+/g,m=>' '.repeat(m.length)),a=[],m;let v=/\b(?:containership|container ship|ship|vessel|barge|destroyer|frigate|carrier|craft)\s+([A-Z][A-Za-z0-9]*(?:\s+[A-Z0-9][A-Za-z0-9-]*){0,3})/gi;while(m=v.exec(clean)){let s=m.index+m[0].length-m[1].length;if(!/^(the|a|an)$/i.test(m[1]))add(a,s,s+m[1].length,'vessel',['SCONUM','SK'],'Named maritime platform following “'+m[0].slice(0,m[0].length-m[1].length).trim()+'”.')}let f=/\b(?:[A-Z][\w&.'-]*\s+){0,8}(?:Terminal|Installation|Facility|Base|Airfield|Port|Site|Plant)\b/g;while(m=f.exec(clean)){let q=m[0].trim(),s=m.index+m[0].indexOf(q);if(q.length>3)add(a,s,s+q.length,'facility',['BE','BE_OSUFFIX','SK'],'Named place ending in a facility/site term.')}let e=/\b(?:ship-to-shore\s+)?(?:container\s+)?(?:crane|radar|engine|missile launcher|tank|mortar|torpedo tube|armored vehicle|rifle|aircraft|helicopter|satellite)\b/gi;while(m=e.exec(clean)){let q=m[0],p=/radar/i.test(q)?'X':/crane/i.test(q)?'S':/engine/i.test(q)?'J':/missile/i.test(q)?'V':/tank/i.test(q)?'P':/mortar/i.test(q)?'O':/torpedo/i.test(q)?'U':/armored/i.test(q)?'N':/rifle/i.test(q)?'W':/helicopter/i.test(q)?'B':/aircraft/i.test(q)?'A':/satellite/i.test(q)?'K':'L';add(a,m.index,m.index+q.length,'equipment',['EQPCODE','SK'],'Specific equipment type; suggested EQPCODE: '+prefixes[p]+'.',p)}let z=/\b(?:radar|emitter|signal|frequency|transmission|communications?)\s+(?:system\s+)?([A-Z][A-Za-z0-9-]{1,}|\d{2,}[A-Za-z0-9-]*)\b/gi;while(m=z.exec(clean)){let com=/communication|transmission/i.test(m[0]);add(a,m.index,m.index+m[0].length,'signal',[com?'CENOT':'ELNOT','SK'],'Specific '+(com?'communications':'electronic')+' signal/emitter designation.')}return a.sort((x,y)=>x.start-y.start||y.end-x.end)}
-function render(){if(!input.value){out.className='report empty';out.textContent='Analyze a report to see suggestions here.';return}out.className='report';if(!all.length){out.textContent=input.value;return}let s='',i=0;for(let c of all){if(c.start<i)continue;s+=esc(input.value.slice(i,c.start))+'<button class="mark '+c.kind+'" data-id="'+c.id+'" aria-label="Review '+esc(c.text)+'">'+esc(c.text)+'</button>';i=c.end}s+=esc(input.value.slice(i));out.innerHTML=s;out.querySelectorAll('.mark').forEach(b=>b.onclick=()=>open(all.find(x=>x.id===b.dataset.id)))}function cp(v,b){let ok=()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)};if(navigator.clipboard)navigator.clipboard.writeText(v).then(ok).catch(fallback);else fallback();function fallback(){let x=document.createElement('textarea');x.value=v;x.style.cssText='position:fixed;opacity:0';document.body.append(x);x.select();try{document.execCommand('copy');ok()}catch(_){b.textContent='Select value'}x.remove()}}
-function open(c){current=c;let options=Object.entries(prefixes).map(([k,v])=>'<option value="'+k+'" '+(k===c.prefix?'selected':'')+'>'+k+' — '+esc(v)+'</option>').join('');panel.innerHTML='<h2>Annotation details</h2><p><strong>'+esc(c.text)+'</strong></p><div class="chips"><span class="chip">'+c.kind+'</span><span class="chip">Rules suggestion</span></div>'+c.types.map(t=>'<section class="choice"><h3>'+t+'</h3><p>'+esc(c.reason)+'</p>'+(t==='EQPCODE'?'<label class="small">Prefix <select class="prefix">'+options+'</select></label>':'')+'<div class="generator"><output class="output">—</output><button class="secondary generate" data-t="'+t+'">Generate</button><button class="secondary copy" disabled>Copy</button></div></section>').join('')+'<div class="manual"><strong>Override identifier type</strong><div class="generator"><select id="manual">'+['SCONUM','BE','BE_OSUFFIX','SK','EQPCODE','CENOT','ELNOT'].map(x=>'<option>'+x+'</option>').join('')+'</select><button class="secondary" id="add">Add</button></div></div>';panel.querySelectorAll('.choice').forEach(x=>{let o=x.querySelector('output'),b=x.querySelector('.copy');x.querySelector('.generate').onclick=ev=>{let val=gen(ev.target.dataset.t,x.querySelector('.prefix')?.value);o.textContent=val;b.disabled=false;b.onclick=()=>cp(val,b)}});$('add').onclick=()=>{let t=$('manual').value;if(!current.types.includes(t)){current.types.push(t);open(current)}}}
- $('analyze').onclick=()=>{all=analysis(input.value);panel.innerHTML='<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>';render();status.textContent=all.length?all.length+' suggestion'+(all.length===1?'':'s')+' found. The source report remains unchanged.':'No high-confidence suggestions found.'};$('clear').onclick=()=>{input.value='';all=[];render();panel.innerHTML='<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>';status.textContent='';input.focus()};input.oninput=()=>{all=[];render();status.textContent='Text changed; analyze again to refresh suggestions.'};
-})();
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IDHelper Lite</title>
+  <style>
+    /* Self-contained styles allow this restricted-environment build to run from file://. */
+    :root { font-family: system-ui, sans-serif; color: #162235; background: #f5f7fb; }
+    * { box-sizing: border-box; } body { margin: 0; } .shell { max-width: 1200px; margin: auto; padding: 24px; }
+    h1 { margin: 0; } p { line-height: 1.45; color: #536277; }
+    .notice, .card { padding: 14px; border: 1px solid #cfd9e7; border-radius: 9px; background: #fff; }
+    .notice { margin: 14px 0; background: #e8f1ff; }
+    textarea { width: 100%; min-height: 190px; padding: 12px; border: 1px solid #9eacbf; border-radius: 8px; font: 1rem ui-monospace, monospace; resize: vertical; }
+    label { display: block; margin: 14px 0 7px; font-weight: 650; } button, select { font: inherit; }
+    button { padding: 8px 12px; border: 1px solid #2565a7; border-radius: 7px; color: #fff; background: #155eae; font-weight: 650; cursor: pointer; }
+    button.secondary { color: #1f4e86; background: #fff; } button:disabled { cursor: not-allowed; opacity: .55; }
+    .actions, .generator, .legend, .chips, .format-toggle { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .actions { margin: 12px 0; } .status { min-height: 1.5em; color: #536277; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; margin-top: 14px; }
+    .report { min-height: 150px; white-space: pre-wrap; word-break: break-word; } .empty { color: #68778b; font-style: italic; }
+    .mark { padding: 0 2px; border: 0; border-bottom: 2px solid #1975c1; border-radius: 3px; color: inherit; background: #e0f0ff; font: inherit; cursor: pointer; }
+    .mark:focus, .mark:hover { outline: 3px solid #83c3ff; background: #c6e6ff; }
+    .mark.facility { background: #f1e8fc; border-color: #7e4ab5; } .mark.equipment { background: #fff0dc; border-color: #a15b0a; } .mark.signal { background: #fde9f1; border-color: #aa245d; }
+    .legend { margin-bottom: 10px; font-size: .85rem; } .chip { padding: 3px 7px; border-radius: 12px; background: #edf2f8; font-size: .8rem; }
+    .choice, .manual, .json-output { padding-top: 12px; border-top: 1px solid #dce3ee; } .choice h3 { margin: 0 0 4px; font-size: 1rem; }
+    .choice p, .small { margin: 4px 0; color: #536277; font-size: .88rem; } .output { min-width: 110px; padding: 6px 8px; border-radius: 5px; background: #edf2f8; font-family: ui-monospace, monospace; font-weight: 700; }
+    .manual select, .prefix { max-width: 100%; padding: 7px; } .json-output { margin-top: 14px; } .json-output textarea { min-height: 110px; font-size: .82rem; }
+    .format-toggle { margin: 9px 0; } .format-toggle label { margin: 0; font-size: .9rem; font-weight: 500; }
+    @media (max-width: 800px) { .shell { padding: 14px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>IDHelper Lite</h1>
+    <p>Offline, rules-only review aid. Suggestions are editable and do not look up real identifiers.</p>
+    <div class="notice">No model, network request, or external dependency. This file works directly from <code>file://</code>.</div>
+    <label for="input">Report</label><textarea id="input" placeholder="Paste one report here…"></textarea>
+    <div class="actions"><button id="analyze">Analyze report</button><button id="clear" class="secondary">Clear</button></div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <section class="card json-output" aria-labelledby="json-heading">
+      <h2 id="json-heading">Generated ID JSON</h2>
+      <p class="small">Only values you generate are included. Regenerating the same annotation and ID type replaces its prior value.</p>
+      <div class="format-toggle" role="radiogroup" aria-label="JSON output format">
+        <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped arrays</label>
+        <label><input type="radio" name="json-format" value="records"> Entity records (escaped for JSON-within-JSON)</label>
+      </div>
+      <textarea id="json-output" readonly aria-label="Generated identifier JSON">{}</textarea>
+      <div class="actions"><button id="copy-json" class="secondary">Copy JSON</button><button id="clear-json" class="secondary">Clear generated IDs</button></div>
+    </section>
+    <div class="grid"><section class="card"><h2>Annotated report</h2><div class="legend">Blue: vessel · Purple: facility · Orange: equipment · Pink: signal/emitter</div><div id="report" class="report empty">Analyze a report to see suggestions here.</div></section><aside id="details" class="card" aria-live="polite"><h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p></aside></div>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      /** DOM references remain constant for the life of this standalone page. */
+      const $ = (id) => document.getElementById(id);
+      const input = $("input"), reportOutput = $("report"), detailsPanel = $("details"), status = $("status"), jsonOutput = $("json-output");
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      /** Approved EQPCODE categories shown when an equipment candidate is selected. */
+      const prefixes = { A: "Aircraft — Fixed Wing", B: "Aircraft — Rotary Wing", C: "Naval Ships — Combatant Ship", D: "Naval Ships — Combatant Craft", E: "Naval Ships — Auxiliary Ship", F: "Naval Ships — Support Craft", G: "Merchant/Fishing/Research/Special-Purpose Ship", H: "Optics", J: "Engines & Propulsion", K: "Space Objects & Launch Vehicles", L: "Associated/Miscellaneous Equipment", M: "Antitank Weapons", N: "Armored Vehicles", O: "Mortars", P: "Tanks", Q: "General Purpose Vehicles", R: "Special Purpose Vehicles", S: "Engineering Equipment", T: "Air Defense Weapons", U: "Field Artillery/Surface Bombardment/Torpedo Tubes", V: "Surface-to-Surface Missile Launchers", W: "Small Arms", X: "Radars/Electronic Warfare/Remote Detection", Y: "Communications & ADP", Z: "Missiles/Ammunition", 9: "File Administrative Entries" };
+      /** Exact-span rule suggestions; reset when source input changes. */
+      let annotations = [];
+      /** Annotation currently displayed in the side panel. */
+      let currentAnnotation;
+      /**
+       * Latest generated synthetic values. Keying by annotation + ID family
+       * makes regeneration replacement explicit and prevents duplicate output.
+       */
+      const generatedIds = new Map();
+      /** Escapes source text before interpolation into report markup. */
+      const escapeHtml = (value) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+      /** Uses secure browser random values when possible; falls back for older file:// hosts. */
+      function randomWords(count) { if (globalThis.crypto?.getRandomValues) { const values = new Uint32Array(count); globalThis.crypto.getRandomValues(values); return [...values]; } return Array.from({ length: count }, () => Math.floor(Math.random() * 0x1_0000_0000)); }
+      /** Returns one format-conforming synthetic ID; values are not registry-checked. */
+      function generateId(type, prefix) {
+        const random = randomWords(40), digits = (count) => random.splice(0, count).map((value) => value % 10).join(""), alpha = (count) => random.splice(0, count).map((value) => letters[value % 26]).join("");
+        if (type === "SCONUM") return alpha(1) + digits(5);
+        if (type === "BE") { const installation = [digits(6), alpha(1) + digits(5), alpha(2) + digits(4)][random.shift() % 3], beNumber = digits(4) + installation; return random.shift() % 1000 < 33 ? beNumber.slice(0, 4) + "-" + beNumber.slice(5) : beNumber; }
+        if (type === "BE_OSUFFIX") { const joiner = ["/", "-", " ", "", "", "", "", "", "", ""][random.shift() % 10]; return generateId("BE") + joiner + alpha(2) + digits(3); }
+        if (type === "SK") return digits(14);
+        if (type === "EQPCODE") { const form = random.shift() % 5, body = form < 3 ? alpha(4) : form === 3 ? alpha(3) + digits(1) : alpha(2) + digits(2), availablePrefixes = Object.keys(prefixes); return (prefixes[prefix] ? prefix : availablePrefixes[random.shift() % availablePrefixes.length]) + body; }
+        const template = type === "CENOT" ? ["XX000", "XX000", "XX000", "XX000", "XX000", "X000X", "X000X", "X0000", "00000"][random.shift() % 9] : ["X000X", "X000X", "X000X", "X0000", "00000"][random.shift() % 5];
+        return template.replace(/[X0]/g, (character) => character === "X" ? alpha(1) : digits(1));
+      }
+      /** Adds one valid non-duplicate candidate span to a result list. */
+      function addCandidate(list, start, end, kind, types, reason, prefix) { if (start >= 0 && end > start && !list.some((item) => item.start === start && item.end === end)) list.push({ id: "c" + list.length, start, end, text: input.value.slice(start, end), kind, types, reason, prefix }); }
+      /**
+       * Rules-only pipeline: length-preserving underscore normalization then
+       * contextual regular expressions. Returned offsets point at original text.
+       */
+      function analyzeReport(text) {
+        const analysisText = text.replace(/_+/g, (match) => " ".repeat(match.length)), found = []; let match;
+        const vesselPattern = /\b(?:containership|container ship|ship|vessel|barge|destroyer|frigate|carrier|craft)\s+([A-Z][A-Za-z0-9]*(?:\s+[A-Z0-9][A-Za-z0-9-]*){0,3})/gi;
+        while ((match = vesselPattern.exec(analysisText))) { const start = match.index + match[0].length - match[1].length; if (!/^(the|a|an)$/i.test(match[1])) addCandidate(found, start, start + match[1].length, "vessel", ["SCONUM", "SK"], `Named maritime platform following “${match[0].slice(0, match[0].length - match[1].length).trim()}”.`); }
+        const facilityPattern = /\b(?:[A-Z][\w&.'-]*\s+){0,8}(?:Terminal|Installation|Facility|Base|Airfield|Port|Site|Plant)\b/g;
+        while ((match = facilityPattern.exec(analysisText))) { const textMatch = match[0].trim(), start = match.index + match[0].indexOf(textMatch); if (textMatch.length > 3) addCandidate(found, start, start + textMatch.length, "facility", ["BE", "BE_OSUFFIX", "SK"], "Named place ending in a facility/site term."); }
+        const equipmentPattern = /\b(?:ship-to-shore\s+)?(?:container\s+)?(?:crane|radar|engine|missile launcher|tank|mortar|torpedo tube|armored vehicle|rifle|aircraft|helicopter|satellite)\b/gi;
+        while ((match = equipmentPattern.exec(analysisText))) { const textMatch = match[0], prefix = /radar/i.test(textMatch) ? "X" : /crane/i.test(textMatch) ? "S" : /engine/i.test(textMatch) ? "J" : /missile/i.test(textMatch) ? "V" : /tank/i.test(textMatch) ? "P" : /mortar/i.test(textMatch) ? "O" : /torpedo/i.test(textMatch) ? "U" : /armored/i.test(textMatch) ? "N" : /rifle/i.test(textMatch) ? "W" : /helicopter/i.test(textMatch) ? "B" : /aircraft/i.test(textMatch) ? "A" : /satellite/i.test(textMatch) ? "K" : "L"; addCandidate(found, match.index, match.index + textMatch.length, "equipment", ["EQPCODE", "SK"], `Specific equipment type; suggested EQPCODE: ${prefixes[prefix]}.`, prefix); }
+        const signalPattern = /\b(?:radar|emitter|signal|frequency|transmission|communications?)\s+(?:system\s+)?([A-Z][A-Za-z0-9-]{1,}|\d{2,}[A-Za-z0-9-]*)\b/gi;
+        while ((match = signalPattern.exec(analysisText))) { const communications = /communication|transmission/i.test(match[0]); addCandidate(found, match.index, match.index + match[0].length, "signal", [communications ? "CENOT" : "ELNOT", "SK"], `Specific ${communications ? "communications" : "electronic"} signal/emitter designation.`); }
+        return found.sort((left, right) => left.start - right.start || right.end - left.end);
+      }
+      /** Maps internal ID labels to the supervisor-requested entity-record property names. */
+      function recordPropertyName(type) { return { SCONUM: "sconum", BE: "be", BE_OSUFFIX: "be_osuffix", SK: "sk", EQPCODE: "eqpcode", CENOT: "cenot", ELNOT: "elnot" }[type]; }
+      /**
+       * Legacy contract required by the current integration: always provide
+       * SCONUM, BE, and EQP_CODE arrays, using `[""]` until values are generated.
+       * Other supported identifier types deliberately do not appear
+       * in this older schema. EQPCODE is renamed to its legacy `EQP_CODE` key.
+       */
+      function buildLegacyOutput() {
+        const grouped = { SCONUM: [], BE: [], EQP_CODE: [] };
+        for (const entry of generatedIds.values()) {
+          const key = entry.type === "EQPCODE" ? "EQP_CODE" : entry.type;
+          if (key in grouped) grouped[key].push(entry.value);
+        }
+        for (const key of Object.keys(grouped)) {
+          if (grouped[key].length === 0) grouped[key].push("");
+        }
+        return grouped;
+      }
+      /** Entity contract: merges all generated family values for each annotation under its exact name. */
+      function buildRecordOutput() { const records = new Map(); for (const entry of generatedIds.values()) { const record = records.get(entry.annotation.id) ?? { name: entry.annotation.text }; record[recordPropertyName(entry.type)] = entry.value; records.set(entry.annotation.id, record); } return [...records.values()]; }
+      /**
+       * Renders selected output mode. Record mode serializes the complete JSON
+       * document as a JSON string, then removes only its enclosing quotes. This
+       * preserves escaping for quotes, backslashes, newlines, and all other
+       * JSON-sensitive content when pasted into a JSON-within-JSON field.
+       */
+      function renderJsonOutput() {
+        const mode = document.querySelector('input[name="json-format"]:checked').value;
+        const json = JSON.stringify(mode === "legacy" ? buildLegacyOutput() : buildRecordOutput());
+        jsonOutput.value = mode === "records" ? JSON.stringify(json).slice(1, -1) : json;
+      }
+      /** Renders source report as escaped text plus non-overlapping keyboard buttons. */
+      function renderReport() {
+        if (!input.value) { reportOutput.className = "report empty"; reportOutput.textContent = "Analyze a report to see suggestions here."; return; }
+        reportOutput.className = "report"; if (!annotations.length) { reportOutput.textContent = input.value; return; }
+        let html = "", cursor = 0;
+        for (const annotation of annotations) { if (annotation.start < cursor) continue; html += escapeHtml(input.value.slice(cursor, annotation.start)) + `<button class="mark ${annotation.kind}" data-id="${annotation.id}" aria-label="Review ${escapeHtml(annotation.text)}">${escapeHtml(annotation.text)}</button>`; cursor = annotation.end; }
+        reportOutput.innerHTML = html + escapeHtml(input.value.slice(cursor));
+        reportOutput.querySelectorAll(".mark").forEach((button) => { button.onclick = () => openAnnotation(annotations.find((item) => item.id === button.dataset.id)); });
+      }
+      /** Copies a raw string, using an old-browser textarea fallback when Clipboard API is unavailable. */
+      function copyText(value, button) { const copied = () => { button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy"; }, 1200); }; const fallback = () => { const temporary = document.createElement("textarea"); temporary.value = value; temporary.style.cssText = "position:fixed;opacity:0"; document.body.append(temporary); temporary.select(); try { document.execCommand("copy"); copied(); } catch (_) { button.textContent = "Select value"; } temporary.remove(); }; if (navigator.clipboard) navigator.clipboard.writeText(value).then(copied).catch(fallback); else fallback(); }
+      /** Saves or replaces one generated value, then synchronizes the JSON output. */
+      function storeGeneratedId(annotation, type, value) { generatedIds.set(`${annotation.id}:${type}`, { annotation, type, value }); renderJsonOutput(); }
+      /** Builds review/generation controls for one selected source annotation. */
+      function openAnnotation(annotation) {
+        currentAnnotation = annotation;
+        const options = Object.entries(prefixes).map(([code, description]) => `<option value="${code}" ${code === annotation.prefix ? "selected" : ""}>${code} — ${escapeHtml(description)}</option>`).join("");
+        detailsPanel.innerHTML = `<h2>Annotation details</h2><p><strong>${escapeHtml(annotation.text)}</strong></p><div class="chips"><span class="chip">${annotation.kind}</span><span class="chip">Rules suggestion</span></div>${annotation.types.map((type) => `<section class="choice"><h3>${type}</h3><p>${escapeHtml(annotation.reason)}</p>${type === "EQPCODE" ? `<label class="small">Prefix <select class="prefix">${options}</select></label>` : ""}<div class="generator"><output class="output">—</output><button class="secondary generate" data-type="${type}">Generate</button><button class="secondary copy" disabled>Copy</button></div></section>`).join("")}<div class="manual"><strong>Override identifier type</strong><div class="generator"><select id="manual-type">${["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"].map((type) => `<option>${type}</option>`).join("")}</select><button class="secondary" id="add-type">Add</button></div></div>`;
+        detailsPanel.querySelectorAll(".choice").forEach((choice) => { const output = choice.querySelector("output"), copyButton = choice.querySelector(".copy"); choice.querySelector(".generate").onclick = (event) => { const type = event.target.dataset.type, value = generateId(type, choice.querySelector(".prefix")?.value); output.textContent = value; copyButton.disabled = false; copyButton.onclick = () => copyText(value, copyButton); storeGeneratedId(annotation, type, value); }; });
+        $("add-type").onclick = () => { const type = $("manual-type").value; if (!currentAnnotation.types.includes(type)) { currentAnnotation.types.push(type); openAnnotation(currentAnnotation); } };
+      }
+      // A new analysis creates new annotation identities, so prior generated IDs
+      // are cleared rather than being mislabeled as belonging to new results.
+      $("analyze").onclick = () => { generatedIds.clear(); renderJsonOutput(); annotations = analyzeReport(input.value); currentAnnotation = undefined; detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; renderReport(); status.textContent = annotations.length ? `${annotations.length} suggestion${annotations.length === 1 ? "" : "s"} found. The source report remains unchanged.` : "No high-confidence suggestions found."; };
+      $("clear").onclick = () => { input.value = ""; annotations = []; currentAnnotation = undefined; generatedIds.clear(); renderReport(); renderJsonOutput(); detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; status.textContent = ""; input.focus(); };
+      // Source edits invalidate exact spans and their associated output records.
+      input.oninput = () => { annotations = []; currentAnnotation = undefined; generatedIds.clear(); renderReport(); renderJsonOutput(); status.textContent = "Text changed; analyze again to refresh suggestions."; };
+      document.querySelectorAll('input[name="json-format"]').forEach((radio) => { radio.onchange = renderJsonOutput; });
+      $("copy-json").onclick = (event) => copyText(jsonOutput.value, event.target);
+      $("clear-json").onclick = () => { generatedIds.clear(); renderJsonOutput(); status.textContent = "Generated IDs cleared; report annotations remain available."; };
+      renderJsonOutput();
+    })();
+  </script>
+</body>
+</html>

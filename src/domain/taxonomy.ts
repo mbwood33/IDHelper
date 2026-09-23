@@ -1,5 +1,10 @@
 import { EQPCODE_PREFIXES, type EqpCodePrefix } from "./types";
 
+/**
+ * Human-readable description for every approved EQPCODE prefix. The readonly
+ * record makes omission of an approved prefix a TypeScript error and prevents
+ * callers from mutating the application taxonomy at runtime.
+ */
 export const EQPCODE_PREFIX_TAXONOMY: Readonly<Record<EqpCodePrefix, string>> = {
   A: "Aircraft - Fixed Wing",
   B: "Aircraft - Rotary Wing",
@@ -29,6 +34,12 @@ export const EQPCODE_PREFIX_TAXONOMY: Readonly<Record<EqpCodePrefix, string>> = 
   9: "File Administrative Entries",
 };
 
+/**
+ * Narrows unknown external input to an approved EQPCODE prefix.
+ *
+ * @param value Value from a model, import, or UI control.
+ * @returns `true` only for one of the approved one-character category codes.
+ */
 export function isEqpCodePrefix(value: unknown): value is EqpCodePrefix {
   return typeof value === "string" && (EQPCODE_PREFIXES as readonly string[]).includes(value);
 }

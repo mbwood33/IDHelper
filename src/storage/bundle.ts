@@ -11,16 +11,26 @@ import {
   type UserPolicyOverride,
 } from "./types";
 
+/** Closed runtime allow-list corresponding to the `ReviewDecision` union. */
 const DECISIONS = ["accepted", "rejected", "edited"] as const;
 
+/**
+ * Narrows unknown JSON data to an object with ordinary string keys. Arrays and
+ * null are rejected because neither can safely represent a bundle record.
+ */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Returns true only for strings accepted by JavaScript's date parser. */
 function isIsoDate(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
+/**
+ * Verifies the serializable fields inherited from `EntityIdPolicy`. This is a
+ * shape check; `isUserPolicyOverride` additionally checks audit metadata.
+ */
 function hasPolicyShape(value: unknown): value is EntityIdPolicy {
   if (!isPlainObject(value)) return false;
   return typeof value.entityClass === "string"
@@ -30,10 +40,16 @@ function hasPolicyShape(value: unknown): value is EntityIdPolicy {
     && value.possibleIdTypes.every(isIdType);
 }
 
+/** Validates untrusted JSON as a timestamped user policy override. */
 export function isUserPolicyOverride(value: unknown): value is UserPolicyOverride {
   return isPlainObject(value) && hasPolicyShape(value) && isIsoDate(value.updatedAt);
 }
 
+/**
+ * Validates a reviewed decision and the candidate's exact source-report span.
+ * The candidate validation prevents imported offsets from rendering arbitrary
+ * or out-of-bounds text in the review UI.
+ */
 export function isReviewedDecision(value: unknown): value is ReviewedDecision {
   if (!isPlainObject(value)) return false;
   const candidate = value.candidate;
@@ -56,6 +72,14 @@ export function isKnowledgeState(value: unknown): value is KnowledgeState {
     && value.reviewedDecisions.every(isReviewedDecision);
 }
 
+/**
+ * Wraps valid local state in the versioned, portable export envelope.
+ *
+ * @param state State already validated for storage.
+ * @param exportedAt Optional injectable ISO timestamp, useful for deterministic tests.
+ * @returns A deep-copied export object with schema metadata.
+ * @throws {TypeError} When `state` does not satisfy the storage schema.
+ */
 export function createKnowledgeBundle(
   state: KnowledgeState,
   exportedAt = new Date().toISOString(),
@@ -72,7 +96,10 @@ export function createKnowledgeBundle(
   };
 }
 
-/** A readable, versioned JSON artifact; this function has no storage side effects. */
+/**
+ * Produces readable, versioned JSON without any persistence side effect.
+ * @returns Pretty-printed JSON ending in a newline for friendly file diffs.
+ */
 export function serializeKnowledgeBundle(state: KnowledgeState): string {
   return `${JSON.stringify(createKnowledgeBundle(state), null, 2)}\n`;
 }
@@ -80,6 +107,13 @@ export function serializeKnowledgeBundle(state: KnowledgeState): string {
 /**
  * Parse and validate an import without applying it. Callers can present the
  * returned preview and only then pass `preview.bundle` to persistence.
+ */
+/**
+ * Parses untrusted JSON text and validates the full bundle before applying it.
+ *
+ * @param input Text read from an import file.
+ * @returns A preview on success, or all detected schema errors on failure.
+ * The function deliberately never reads or writes IndexedDB.
  */
 export function parseKnowledgeBundle(input: string): ImportParseResult {
   let value: unknown;
@@ -108,11 +142,24 @@ export function parseKnowledgeBundle(input: string): ImportParseResult {
   };
 }
 
-/** Defensive copy for UI state and storage boundaries. */
+/**
+ * Creates a defensive deep copy at UI/storage boundaries. Invalid input yields
+ * a separate empty state, ensuring malformed data is never propagated.
+ */
 export function cloneKnowledgeState(state: KnowledgeState): KnowledgeState {
   return isKnowledgeState(state) ? structuredClone(state) : structuredClone(EMPTY_KNOWLEDGE_STATE);
 }
 
+/**
+ * Constructs and validates one auditable review record.
+ *
+ * @param report Original, unchanged source report.
+ * @param candidate Exact candidate selected in that report.
+ * @param decision Reviewer outcome.
+ * @param options Caller-generated ID, timestamp, and optional rationale.
+ * @returns A schema-valid `ReviewedDecision` ready for local persistence.
+ * @throws {TypeError} When any supplied field fails validation.
+ */
 export function createReviewedDecision(
   report: string,
   candidate: CandidateAnnotation,

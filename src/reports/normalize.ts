@@ -1,4 +1,7 @@
-/** A legacy underscore placeholder in the original report. */
+/**
+ * A legacy run of underscores in the unmodified source report. Offsets use an
+ * inclusive `start` and exclusive `end` boundary so `text === original.slice(start, end)`.
+ */
 export interface LegacyBlank {
   start: number;
   end: number;
@@ -6,8 +9,9 @@ export interface LegacyBlank {
 }
 
 /**
- * The analysis text has exactly the same length as the displayed source, so
- * offsets returned by an analyzer can always be used against `original`.
+ * Offset-preserving report representation. `analysisText` hides unreliable
+ * legacy blanks while retaining one character per original character, meaning
+ * analyzers can return offsets directly usable against `original`.
  */
 export interface NormalizedReport {
   original: string;
@@ -16,8 +20,12 @@ export interface NormalizedReport {
 }
 
 /**
- * Hide unreliable underscore placeholders from analyzers while preserving all
- * character positions. The original report is never changed.
+ * Locates each `_+` run and replaces it with the same number of spaces for
+ * analysis only. Equal-length replacement preserves all later offsets; the
+ * original string is stored unchanged for display and exact-span validation.
+ *
+ * @param original User-provided report text, including any legacy placeholders.
+ * @returns The untouched original, offset-compatible analysis copy, and blanks.
  */
 export function normalizeReport(original: string): NormalizedReport {
   const legacyBlanks: LegacyBlank[] = [];
@@ -34,13 +42,17 @@ export type LegacyBlankStatus =
   | "possibly-misplaced"
   | "unsupported";
 
+/** Result of comparing one legacy blank to independently found candidate spans. */
 export interface LegacyBlankComparison {
   blank: LegacyBlank;
   status: LegacyBlankStatus;
   candidateIds: string[];
 }
 
-/** Minimal span contract used to avoid coupling normalization to analyzers. */
+/**
+ * Minimal candidate span contract. It intentionally avoids analyzer/domain
+ * dependencies while retaining the only fields blank comparison needs.
+ */
 export interface SpanCandidate {
   id: string;
   start: number;
@@ -48,9 +60,16 @@ export interface SpanCandidate {
 }
 
 /**
- * Compare independently discovered candidates to legacy blanks. A candidate
- * touching a blank is aligned; one within the supplied distance is only a
- * possible placement hint. Blank locations never create annotations.
+ * Compares independently discovered candidate spans with legacy blanks.
+ * First it identifies overlap/touching spans as `aligned`; if none exist, it
+ * computes the nearest non-overlapping distance and classifies candidates
+ * within `nearbyDistance` as `possibly-misplaced`. Otherwise it is unsupported.
+ * Crucially, blanks are evidence for review only and never create candidates.
+ *
+ * @param blanks Placeholders captured from the original report.
+ * @param candidates Independently discovered annotation spans.
+ * @param nearbyDistance Maximum non-overlapping character distance, default 24.
+ * @returns One comparison result per blank, preserving input blank order.
  */
 export function compareLegacyBlanks(
   blanks: readonly LegacyBlank[],

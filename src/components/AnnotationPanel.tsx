@@ -1,16 +1,30 @@
 import { useEffect, useState } from "react";
 import { EQP_PREFIXES, type Annotation, type IdRecommendation, type IdType } from "./types";
 
+/** Callback contract between the review panel and its owning application state. */
 interface Props {
+  /** Candidate whose details are currently displayed; absent before selection. */
   annotation?: Annotation;
+  /** Records an accept/reject review outcome for the selected candidate. */
   onDecision: (decision: "accepted" | "rejected") => void;
+  /** Receives a human-corrected candidate and optional explanatory note. */
   onChange: (annotation: Annotation, note?: string) => void;
+  /**
+   * Optional pure generator supplied by the app. It returns only a synthetic
+   * raw identifier, keeping domain generation outside presentation code.
+   */
   onGenerate?: (recommendation: IdRecommendation, eqpPrefix?: string) => string | undefined;
+  /** Reports a generated ID to the report-level integration-output collector. */
+  onGenerated?: (annotation: Annotation, recommendation: IdRecommendation, value: string) => void;
 }
 
+/** Converts a 0–1 confidence score into the concise visual label shown in UI. */
 function percent(value: number) { return `${Math.round(value * 100)}%`; }
 
+/** Complete ordered list for correction checkboxes; order is deliberate and stable. */
 const ID_TYPES: IdType[] = ["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"];
+
+/** User-facing entity-class choices for a manual correction. */
 const ENTITY_CLASSES = [
   ["named-vessel", "Named vessel / maritime platform"],
   ["facility", "Facility / installation / site"],
@@ -20,17 +34,45 @@ const ENTITY_CLASSES = [
   ["other-indexed-entity", "Other possibly indexed entity"],
 ] as const;
 
-export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate }: Props) {
+/**
+ * Persistent review/detail panel for one selected annotation.
+ *
+ * The component deliberately does not modify the report. It keeps temporary
+ * generation and correction state locally, then communicates decisions through
+ * callbacks so the parent owns persistence and analysis state.
+ *
+ * @param annotation The selected exact-span candidate, if one exists.
+ * @param onDecision Callback for accept/reject outcomes.
+ * @param onChange Callback for a validated user correction.
+ * @param onGenerate Optional identifier generator; absence disables generation.
+ * @returns An accessible empty prompt or the full annotation review controls.
+ */
+export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, onGenerated }: Props) {
+  /** Generated raw IDs keyed by their type; reset when selection changes. */
   const [values, setValues] = useState<Record<string, string>>({});
+  /** Type most recently copied, used only to provide immediate success feedback. */
   const [copied, setCopied] = useState<string>();
+  /** User-selected or analyzer-suggested EQPCODE category prefix. */
   const [prefix, setPrefix] = useState("G");
+  /** Recoverable clipboard-permission/error message shown beside selectable ID text. */
   const [copyProblem, setCopyProblem] = useState<string>();
+  /** Whether the manual correction form is visible. */
   const [editing, setEditing] = useState(false);
+  /** Draft entity class used only until the reviewer saves a correction. */
   const [editedClass, setEditedClass] = useState("other-indexed-entity");
+  /** Draft possible identifier types, controlled by correction checkboxes. */
   const [editedTypes, setEditedTypes] = useState<IdType[]>([]);
+  /** Optional reviewer rationale retained with the correction history. */
   const [editNote, setEditNote] = useState("");
+  /** Validation message for an incomplete correction form. */
   const [editProblem, setEditProblem] = useState<string>();
 
+  /**
+   * Resets ephemeral UI state whenever a different annotation is selected.
+   * It adopts a valid EQPCODE suggestion when present, otherwise retains the
+   * safe default. The dependency is the ID rather than object identity so
+   * equivalent re-renders do not erase in-progress edits.
+   */
   useEffect(() => {
     const suggested = annotation?.possibleIdTypes.find((item) => item.type === "EQPCODE")?.eqpPrefix;
     if (suggested && EQP_PREFIXES.some(([code]) => code === suggested)) setPrefix(suggested);
@@ -44,22 +86,43 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate }
     setEditProblem(undefined);
   }, [annotation?.id]);
 
+  // An explicit labelled empty state explains how keyboard and mouse users can proceed.
   if (!annotation) return <aside className="panel panel--empty" aria-label="Annotation details"><p className="eyebrow">Annotation details</p><h2>Select a highlight</h2><p>Choose a highlighted phrase in the analyzed report to review its possible IDs and create a value.</p></aside>;
 
+  /**
+   * Requests one synthetic value and stores it under its ID type for display.
+   * @param recommendation The selected recommendation; EQPCODE receives the
+   * current category prefix while all other generators receive no prefix.
+   */
   const generate = (recommendation: IdRecommendation) => {
     const value = onGenerate?.(recommendation, recommendation.type === "EQPCODE" ? prefix : undefined);
-    if (value) setValues((current) => ({ ...current, [recommendation.type]: value }));
+    if (value) {
+      setValues((current) => ({ ...current, [recommendation.type]: value }));
+      onGenerated?.(annotation, recommendation, value);
+    }
   };
+  /**
+   * Copies only a generated raw ID. Clipboard denial is expected in some
+   * browser/security contexts, so failure leaves the selectable input visible
+   * and exposes a non-disruptive status message.
+   * @param type ID type whose generated value should be copied.
+   */
   const copy = async (type: string) => {
     const value = values[type];
     if (!value) return;
     try { await navigator.clipboard.writeText(value); setCopied(type); setCopyProblem(undefined); }
     catch { setCopyProblem("Clipboard access was unavailable. Select and copy the value below."); }
   };
+  /** Adds/removes a draft ID type and clears stale form-validation feedback. */
   const toggleType = (type: IdType) => {
     setEditedTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
     setEditProblem(undefined);
   };
+  /**
+   * Validates the correction draft and emits a new manual-provenance candidate.
+   * It requires at least one ID type; rejecting a candidate is intentionally a
+   * separate action. Nothing is persisted here—the parent decides persistence.
+   */
   const saveCorrection = () => {
     if (!editedTypes.length) {
       setEditProblem("Choose at least one corrected identifier type, or use Reject if none apply.");

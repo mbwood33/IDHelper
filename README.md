@@ -14,6 +14,17 @@ The ordinary **Analyze with rules** action never waits for the model. **Analyze 
 
 Selected annotations can be accepted, rejected, or changed. **Change** records the corrected entity class, corrected ID types, optional EQPCODE prefix, and optional reviewer explanation. The latest eight explicit corrections are supplied as compact examples to later local-AI requests. This is in-context guidance rather than model training: the base model weights are never silently modified, and exported knowledge remains readable JSON.
 
+## Integration JSON output
+
+Generating an ID now adds it to an on-page integration output panel. Regenerating the same ID type for the same highlight replaces its prior value. Editing or clearing the source report clears generated output so identifiers cannot accidentally carry over to another report.
+
+The output-format selector supports:
+
+- **Legacy grouped arrays**, matching the existing contract exactly: `{"SCONUM":[""],"BE":[""],"EQP_CODE":[""]}`. Once a value exists it replaces that key's empty-string placeholder. ID types not represented by the older contract are omitted from this view.
+- **Entity records**, grouping generated values by highlighted report name, for example `[{"name":"Erving","sconum":"A48217"}]`. The displayed/copied value escapes quotes as `\"` because the intended consumer embeds the array inside another JSON string.
+
+The record serializer already defines optional fields for all ID types. `latitude` and `longitude` are reserved in the TypeScript contract but are not emitted until a future coordinate-entry or extraction feature supplies them.
+
 ## Run locally
 
 Requirements: Node.js 22 or newer and npm.
@@ -33,7 +44,7 @@ The generated `dist` folder can be deployed to GitHub Pages, Netlify, Cloudflare
 
 ## Locked-down/offline fallback
 
-Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition has the core paste, highlight, review, raw-ID copy, and EQPCODE-prefix features but does not include saved feedback/import-export or a future local-model option.
+Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition has the core paste, highlight, review, raw-ID copy, EQPCODE-prefix, and integration-output features but does not include saved feedback/import-export or a local-model option.
 
 ## Deploy to GitHub Pages
 

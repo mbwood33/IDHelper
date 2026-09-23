@@ -34,3 +34,14 @@ textarea:disabled { color:#52636e; background:#f2f5f5; }
 .correction-types label { display:flex; align-items:center; gap:6px; color:#344f5d; font-size:.76rem; }
 .correction-types input { margin:0; }
 .correction-problem { margin:0; color:#8b3c22; font-size:.78rem; }
+
+/* Integration-output panel shared by both JSON schemas. */
+.json-output-card { margin-top:22px; padding:24px; border:1px solid #d8e1e4; background:#fff; border-radius:16px; box-shadow:0 9px 28px #21333b0a; }
+.json-output-controls { display:grid; grid-template-columns:minmax(240px, .55fr) minmax(280px, 1fr); gap:14px 24px; align-items:end; margin-top:18px; }
+.json-output-controls label { display:grid; gap:5px; color:#47606e; font-size:.78rem; font-weight:650; }
+.json-output-controls select { width:100%; padding:9px; color:#263843; background:#fff; border:1px solid #c7d3d8; border-radius:7px; }
+.json-output-controls p { margin:0; color:#60717d; font-size:.82rem; line-height:1.45; }
+.json-output { min-height:118px; margin:14px 0 10px; resize:vertical; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:.82rem; overflow-wrap:anywhere; }
+.json-output-actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.json-output-actions p { margin:0; color:#8b3c22; font-size:.82rem; }
+@media (max-width: 700px) { .json-output-controls { grid-template-columns:1fr; }.json-output-card { padding:18px; } }

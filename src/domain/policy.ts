@@ -1,6 +1,10 @@
 import type { EntityIdPolicy } from "./types";
 
-/** Editable starting policy; it is intentionally not an authoritative doctrine. */
+/**
+ * Editable starting policy used by rule/model suggestions. It intentionally is
+ * not authoritative doctrine: user feedback may override it, and no entry
+ * represents a real-system lookup or assignment decision.
+ */
 export const DEFAULT_ENTITY_ID_POLICY: readonly EntityIdPolicy[] = [
   {
     entityClass: "vessel",

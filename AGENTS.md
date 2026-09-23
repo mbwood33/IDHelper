@@ -24,8 +24,41 @@ The project directory was empty when this guide was created. Unless the reposito
    - controls to generate, regenerate, and copy a synthetic ID.
 7. The copy control copies only the raw generated identifier. For example, it copies `A48217`, not `SCONUM: A48217`, not `[A48217]`, and not a synthetic-data warning.
 8. The user can preserve corrections locally and export/import the accumulated rules and feedback as JSON.
+9. Every ID explicitly generated for an annotation contributes to a report integration payload. The user can switch between the legacy grouped schema and the entity-record schema without regenerating values.
 
 Example: in `containership Erving`, the application may highlight `Erving`. Selecting it can recommend SCONUM and SK. Generating and copying the SCONUM copies only a value such as `A48217`.
+
+## Integration output contracts
+
+Integration output is distinct from the versioned knowledge bundle. The knowledge bundle contains settings and reviewed examples; integration output contains only identifiers explicitly generated for the current report.
+
+### Legacy grouped schema
+
+Emit exactly the existing three keys. Use one empty-string placeholder when a
+key has no generated values, matching the current downstream contract:
+
+```json
+{"SCONUM":[""],"BE":[""],"EQP_CODE":[""]}
+```
+
+SCONUM maps to `SCONUM`, BE maps to `BE`, and EQPCODE maps to `EQP_CODE`. Other supported identifier families are not representable in this legacy view and must not create unapproved legacy keys.
+
+### Entity-record schema
+
+Group values by source annotation and use the exact highlighted phrase as `name`:
+
+```json
+[
+  {"name":"test 1","sconum":"A12345"},
+  {"name":"test 2","eqpcode":"GABC1"}
+]
+```
+
+The UI displays and copies this schema as an escaped fragment suitable for placement inside an outer JSON string, for example `[{\"name\":\"test 1\",\"sconum\":\"A12345\"}]`. Use JSON string serialization for escaping rather than a quote-only regular expression so embedded backslashes, quotes, and control characters remain valid. Do not add outer string quotes unless a future downstream contract explicitly requests them.
+
+The entity-record field mapping is `SCONUM -> sconum`, `BE -> be`, `BE_OSUFFIX -> be_osuffix`, `SK -> sk`, `EQPCODE -> eqpcode`, `CENOT -> cenot`, and `ELNOT -> elnot`. Optional `latitude` and `longitude` properties are reserved but must be omitted until real values are explicitly supplied. Never fabricate coordinates.
+
+Regeneration replaces the existing value for the same annotation and ID type. Editing, replacing, or clearing report text clears report integration output to prevent cross-report leakage.
 
 ## Scope
 
