@@ -27,6 +27,8 @@
     .choice p, .small { margin: 4px 0; color: #536277; font-size: .88rem; } .output { min-width: 110px; padding: 6px 8px; border-radius: 5px; background: #edf2f8; font-family: ui-monospace, monospace; font-weight: 700; }
     .manual select, .prefix { max-width: 100%; padding: 7px; } .json-output { margin-top: 14px; } .json-output textarea { min-height: 110px; font-size: .82rem; }
     .format-toggle { margin: 9px 0; } .format-toggle label { margin: 0; font-size: .9rem; font-weight: 500; }
+    .missed-editor { margin: 12px 0; padding: 14px; border: 1px solid #b7cfdf; border-radius: 8px; background: #f5fbff; }
+    .missed-editor label { margin: 8px 0; font-size: .88rem; } .missed-editor select { padding: 7px; max-width: 100%; }
     @media (max-width: 800px) { .shell { padding: 14px; } .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -36,8 +38,9 @@
     <p>Offline, rules-only review aid. Suggestions are editable and do not look up real identifiers.</p>
     <div class="notice">No model, network request, or external dependency. This file works directly from <code>file://</code>.</div>
     <label for="input">Report</label><textarea id="input" placeholder="Paste one report here…"></textarea>
-    <div class="actions"><button id="analyze">Analyze report</button><button id="clear" class="secondary">Clear</button></div>
+    <div class="actions"><button id="analyze">Analyze report</button><button id="add-missed" class="secondary">Add missed ID</button><button id="clear" class="secondary">Clear</button></div>
     <div id="status" class="status" aria-live="polite"></div>
+    <div id="missed-editor"></div>
     <section class="card json-output" aria-labelledby="json-heading">
       <h2 id="json-heading">Generated ID JSON</h2>
       <p class="small">Only values you generate are included. Regenerating the same annotation and ID type replaces its prior value.</p>
@@ -55,7 +58,7 @@
       "use strict";
       /** DOM references remain constant for the life of this standalone page. */
       const $ = (id) => document.getElementById(id);
-      const input = $("input"), reportOutput = $("report"), detailsPanel = $("details"), status = $("status"), jsonOutput = $("json-output");
+      const input = $("input"), reportOutput = $("report"), detailsPanel = $("details"), status = $("status"), jsonOutput = $("json-output"), missedEditor = $("missed-editor");
       const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       /** Approved EQPCODE categories shown when an equipment candidate is selected. */
       const prefixes = { A: "Aircraft — Fixed Wing", B: "Aircraft — Rotary Wing", C: "Naval Ships — Combatant Ship", D: "Naval Ships — Combatant Craft", E: "Naval Ships — Auxiliary Ship", F: "Naval Ships — Support Craft", G: "Merchant/Fishing/Research/Special-Purpose Ship", H: "Optics", J: "Engines & Propulsion", K: "Space Objects & Launch Vehicles", L: "Associated/Miscellaneous Equipment", M: "Antitank Weapons", N: "Armored Vehicles", O: "Mortars", P: "Tanks", Q: "General Purpose Vehicles", R: "Special Purpose Vehicles", S: "Engineering Equipment", T: "Air Defense Weapons", U: "Field Artillery/Surface Bombardment/Torpedo Tubes", V: "Surface-to-Surface Missile Launchers", W: "Small Arms", X: "Radars/Electronic Warfare/Remote Detection", Y: "Communications & ADP", Z: "Missiles/Ammunition", 9: "File Administrative Entries" };
@@ -112,7 +115,7 @@
       function buildLegacyOutput() {
         const grouped = { SCONUM: [], BE: [], EQP_CODE: [] };
         for (const entry of generatedIds.values()) {
-          const key = entry.type === "EQPCODE" ? "EQP_CODE" : entry.type;
+          const key = entry.type === "EQPCODE" ? "EQP_CODE" : entry.type === "BE_OSUFFIX" ? "BE" : entry.type;
           if (key in grouped) grouped[key].push(entry.value);
         }
         for (const key of Object.keys(grouped)) {
@@ -133,6 +136,30 @@
         const json = JSON.stringify(mode === "legacy" ? buildLegacyOutput() : buildRecordOutput());
         jsonOutput.value = mode === "records" ? JSON.stringify(json).slice(1, -1) : json;
       }
+      /**
+       * Converts the exact textarea selection into a user-reviewed annotation.
+       * Whitespace is trimmed by adjusting offsets, and underscore placeholders
+       * are rejected so the visible entity—not a legacy blank—is highlighted.
+       */
+      function startManualAnnotation() {
+        const selected = input.value.slice(input.selectionStart, input.selectionEnd);
+        const leading = selected.match(/^\s*/)[0].length, trailing = selected.match(/\s*$/)[0].length;
+        const start = input.selectionStart + leading, end = input.selectionEnd - trailing;
+        const text = input.value.slice(start, end);
+        if (!text || text.includes("_")) { status.textContent = "Select the exact missed words, without an underscore blank, then choose Add missed ID."; input.focus(); return; }
+        const types = ["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"];
+        const kinds = [["vessel", "Named vessel / maritime platform"], ["facility", "Facility / installation / site"], ["equipment", "Equipment type / model"], ["signal", "Signal / emitter"], ["other", "Other indexed entity"]];
+        missedEditor.innerHTML = `<section class="missed-editor"><strong>Selected: ${escapeHtml(text)}</strong><label>Entity class <select id="missed-kind">${kinds.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select></label><label>ID type <select id="missed-type">${types.map((type) => `<option>${type}</option>`).join("")}</select></label><label>EQPCODE prefix <select id="missed-prefix">${Object.entries(prefixes).map(([code, label]) => `<option value="${code}">${code} — ${escapeHtml(label)}</option>`).join("")}</select></label><div class="actions"><button id="save-missed">Add annotation</button><button id="cancel-missed" class="secondary">Cancel</button></div></section>`;
+        $("save-missed").onclick = () => {
+          const type = $("missed-type").value;
+          const annotation = { id: `manual-${Date.now()}`, start, end, text, kind: $("missed-kind").value, types: [type], reason: "Added manually by the user.", prefix: type === "EQPCODE" ? $("missed-prefix").value : undefined, source: "manual" };
+          annotations = annotations.filter((item) => item.start !== start || item.end !== end);
+          annotations.push(annotation); annotations.sort((left, right) => left.start - right.start || left.end - right.end);
+          missedEditor.innerHTML = ""; renderReport(); openAnnotation(annotation);
+          status.textContent = `${text} added manually. Generate a synthetic ID in the annotation panel.`;
+        };
+        $("cancel-missed").onclick = () => { missedEditor.innerHTML = ""; };
+      }
       /** Renders source report as escaped text plus non-overlapping keyboard buttons. */
       function renderReport() {
         if (!input.value) { reportOutput.className = "report empty"; reportOutput.textContent = "Analyze a report to see suggestions here."; return; }
@@ -150,16 +177,17 @@
       function openAnnotation(annotation) {
         currentAnnotation = annotation;
         const options = Object.entries(prefixes).map(([code, description]) => `<option value="${code}" ${code === annotation.prefix ? "selected" : ""}>${code} — ${escapeHtml(description)}</option>`).join("");
-        detailsPanel.innerHTML = `<h2>Annotation details</h2><p><strong>${escapeHtml(annotation.text)}</strong></p><div class="chips"><span class="chip">${annotation.kind}</span><span class="chip">Rules suggestion</span></div>${annotation.types.map((type) => `<section class="choice"><h3>${type}</h3><p>${escapeHtml(annotation.reason)}</p>${type === "EQPCODE" ? `<label class="small">Prefix <select class="prefix">${options}</select></label>` : ""}<div class="generator"><output class="output">—</output><button class="secondary generate" data-type="${type}">Generate</button><button class="secondary copy" disabled>Copy</button></div></section>`).join("")}<div class="manual"><strong>Override identifier type</strong><div class="generator"><select id="manual-type">${["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"].map((type) => `<option>${type}</option>`).join("")}</select><button class="secondary" id="add-type">Add</button></div></div>`;
+        detailsPanel.innerHTML = `<h2>Annotation details</h2><p><strong>${escapeHtml(annotation.text)}</strong></p><div class="chips"><span class="chip">${annotation.kind}</span><span class="chip">${annotation.source === "manual" ? "Manual annotation" : "Rules suggestion"}</span></div>${annotation.types.map((type) => `<section class="choice"><h3>${type}</h3><p>${escapeHtml(annotation.reason)}</p>${type === "EQPCODE" ? `<label class="small">Prefix <select class="prefix">${options}</select></label>` : ""}<div class="generator"><output class="output">—</output><button class="secondary generate" data-type="${type}">Generate</button><button class="secondary copy" disabled>Copy</button></div></section>`).join("")}<div class="manual"><strong>Override identifier type</strong><div class="generator"><select id="manual-type">${["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENOT", "ELNOT"].map((type) => `<option>${type}</option>`).join("")}</select><button class="secondary" id="add-type">Add</button></div></div>`;
         detailsPanel.querySelectorAll(".choice").forEach((choice) => { const output = choice.querySelector("output"), copyButton = choice.querySelector(".copy"); choice.querySelector(".generate").onclick = (event) => { const type = event.target.dataset.type, value = generateId(type, choice.querySelector(".prefix")?.value); output.textContent = value; copyButton.disabled = false; copyButton.onclick = () => copyText(value, copyButton); storeGeneratedId(annotation, type, value); }; });
         $("add-type").onclick = () => { const type = $("manual-type").value; if (!currentAnnotation.types.includes(type)) { currentAnnotation.types.push(type); openAnnotation(currentAnnotation); } };
       }
       // A new analysis creates new annotation identities, so prior generated IDs
       // are cleared rather than being mislabeled as belonging to new results.
-      $("analyze").onclick = () => { generatedIds.clear(); renderJsonOutput(); annotations = analyzeReport(input.value); currentAnnotation = undefined; detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; renderReport(); status.textContent = annotations.length ? `${annotations.length} suggestion${annotations.length === 1 ? "" : "s"} found. The source report remains unchanged.` : "No high-confidence suggestions found."; };
-      $("clear").onclick = () => { input.value = ""; annotations = []; currentAnnotation = undefined; generatedIds.clear(); renderReport(); renderJsonOutput(); detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; status.textContent = ""; input.focus(); };
+      $("analyze").onclick = () => { const manual = annotations.filter((item) => item.source === "manual" && input.value.slice(item.start, item.end) === item.text); generatedIds.clear(); renderJsonOutput(); annotations = analyzeReport(input.value).filter((rule) => !manual.some((item) => item.start === rule.start && item.end === rule.end)); annotations.push(...manual); annotations.sort((left, right) => left.start - right.start || left.end - right.end); currentAnnotation = undefined; detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; renderReport(); status.textContent = annotations.length ? `${annotations.length} suggestion${annotations.length === 1 ? "" : "s"} found. The source report remains unchanged.` : "No high-confidence suggestions found."; };
+      $("add-missed").onclick = startManualAnnotation;
+      $("clear").onclick = () => { input.value = ""; annotations = []; currentAnnotation = undefined; generatedIds.clear(); missedEditor.innerHTML = ""; renderReport(); renderJsonOutput(); detailsPanel.innerHTML = '<h2>Annotation details</h2><p class="empty">Select a highlight to review identifiers.</p>'; status.textContent = ""; input.focus(); };
       // Source edits invalidate exact spans and their associated output records.
-      input.oninput = () => { annotations = []; currentAnnotation = undefined; generatedIds.clear(); renderReport(); renderJsonOutput(); status.textContent = "Text changed; analyze again to refresh suggestions."; };
+      input.oninput = () => { annotations = []; currentAnnotation = undefined; generatedIds.clear(); missedEditor.innerHTML = ""; renderReport(); renderJsonOutput(); status.textContent = "Text changed; analyze again to refresh suggestions."; };
       document.querySelectorAll('input[name="json-format"]').forEach((radio) => { radio.onchange = renderJsonOutput; });
       $("copy-json").onclick = (event) => copyText(jsonOutput.value, event.target);
       $("clear-json").onclick = () => { generatedIds.clear(); renderJsonOutput(); status.textContent = "Generated IDs cleared; report annotations remain available."; };

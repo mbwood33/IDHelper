@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { EQP_PREFIXES, type Annotation, type IdRecommendation, type IdType } from "./types";
+import type { GeneratedIdentifierState } from "../reports/generatedJson";
 
 /** Callback contract between the review panel and its owning application state. */
 interface Props {
@@ -14,8 +15,12 @@ interface Props {
    * raw identifier, keeping domain generation outside presentation code.
    */
   onGenerate?: (recommendation: IdRecommendation, eqpPrefix?: string) => string | undefined;
-  /** Reports a generated ID to the report-level integration-output collector. */
-  onGenerated?: (annotation: Annotation, recommendation: IdRecommendation, value: string) => void;
+  /** Previously generated values and per-value JSON inclusion state. */
+  generatedIds?: Partial<Record<IdType, GeneratedIdentifierState>>;
+  /** Stores or replaces the generated value for the selected annotation/type. */
+  onGenerated: (type: IdType, value: string) => void;
+  /** Toggles whether one generated value participates in JSON serialization. */
+  onInclusionChange: (type: IdType, included: boolean) => void;
 }
 
 /** Converts a 0–1 confidence score into the concise visual label shown in UI. */
@@ -26,7 +31,7 @@ const ID_TYPES: IdType[] = ["SCONUM", "BE", "BE_OSUFFIX", "SK", "EQPCODE", "CENO
 
 /** User-facing entity-class choices for a manual correction. */
 const ENTITY_CLASSES = [
-  ["named-vessel", "Named vessel / maritime platform"],
+  ["vessel", "Named vessel / maritime platform"],
   ["facility", "Facility / installation / site"],
   ["equipment", "Equipment type / model"],
   ["communications-signal", "Communications signal / emitter"],
@@ -45,11 +50,12 @@ const ENTITY_CLASSES = [
  * @param onDecision Callback for accept/reject outcomes.
  * @param onChange Callback for a validated user correction.
  * @param onGenerate Optional identifier generator; absence disables generation.
+ * @param generatedIds Values already generated for this annotation.
+ * @param onGenerated Callback receiving a newly generated type/value pair.
+ * @param onInclusionChange Callback controlling JSON-export membership.
  * @returns An accessible empty prompt or the full annotation review controls.
  */
-export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, onGenerated }: Props) {
-  /** Generated raw IDs keyed by their type; reset when selection changes. */
-  const [values, setValues] = useState<Record<string, string>>({});
+export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, generatedIds, onGenerated, onInclusionChange }: Props) {
   /** Type most recently copied, used only to provide immediate success feedback. */
   const [copied, setCopied] = useState<string>();
   /** User-selected or analyzer-suggested EQPCODE category prefix. */
@@ -76,7 +82,6 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, 
   useEffect(() => {
     const suggested = annotation?.possibleIdTypes.find((item) => item.type === "EQPCODE")?.eqpPrefix;
     if (suggested && EQP_PREFIXES.some(([code]) => code === suggested)) setPrefix(suggested);
-    setValues({});
     setCopied(undefined);
     setCopyProblem(undefined);
     setEditing(false);
@@ -96,10 +101,7 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, 
    */
   const generate = (recommendation: IdRecommendation) => {
     const value = onGenerate?.(recommendation, recommendation.type === "EQPCODE" ? prefix : undefined);
-    if (value) {
-      setValues((current) => ({ ...current, [recommendation.type]: value }));
-      onGenerated?.(annotation, recommendation, value);
-    }
+    if (value) onGenerated(recommendation.type, value);
   };
   /**
    * Copies only a generated raw ID. Clipboard denial is expected in some
@@ -107,8 +109,8 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, 
    * and exposes a non-disruptive status message.
    * @param type ID type whose generated value should be copied.
    */
-  const copy = async (type: string) => {
-    const value = values[type];
+  const copy = async (type: IdType) => {
+    const value = generatedIds?.[type]?.value;
     if (!value) return;
     try { await navigator.clipboard.writeText(value); setCopied(type); setCopyProblem(undefined); }
     catch { setCopyProblem("Clipboard access was unavailable. Select and copy the value below."); }
@@ -172,7 +174,9 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, 
     </section>}
     <h3>Possible identifier types</h3>
     <div className="recommendations">
-      {annotation.possibleIdTypes.map((recommendation) => <section className="recommendation" key={recommendation.type}>
+      {annotation.possibleIdTypes.map((recommendation) => {
+        const generated = generatedIds?.[recommendation.type];
+        return <section className="recommendation" key={recommendation.type}>
         <div className="recommendation__heading"><strong>{recommendation.type.replace("_", " + ")}</strong><span className="confidence">{percent(recommendation.confidence)} confidence</span></div>
         <p>{recommendation.rationale}</p>
         {recommendation.type === "EQPCODE" && <label className="prefix-control">Equipment category
@@ -180,8 +184,9 @@ export function AnnotationPanel({ annotation, onDecision, onChange, onGenerate, 
             {EQP_PREFIXES.map(([code, name]) => <option value={code} key={code}>{code} - {name}</option>)}
           </select>
         </label>}
-        {values[recommendation.type] ? <div className="generated"><input aria-label={`Generated ${recommendation.type}`} readOnly value={values[recommendation.type]} /><button className="button button--quiet" onClick={() => copy(recommendation.type)} type="button">{copied === recommendation.type ? "Copied" : "Copy"}</button><button className="text-button" onClick={() => generate(recommendation)} type="button">Regenerate</button></div> : <button className="button button--secondary" type="button" onClick={() => generate(recommendation)} disabled={!onGenerate}>Generate ID</button>}
-      </section>)}
+        {generated ? <><div className="generated"><input aria-label={`Generated ${recommendation.type}`} readOnly value={generated.value} /><button className="button button--quiet" onClick={() => { void copy(recommendation.type); }} type="button">{copied === recommendation.type ? "Copied" : "Copy"}</button><button className="text-button" onClick={() => generate(recommendation)} type="button">Regenerate</button></div><label className="json-inclusion"><input type="checkbox" checked={generated.included} onChange={(event) => onInclusionChange(recommendation.type, event.target.checked)} />Include this ID in JSON</label></> : <button className="button button--secondary" type="button" onClick={() => generate(recommendation)} disabled={!onGenerate}>Generate ID</button>}
+      </section>;
+      })}
     </div>
     {copyProblem && <p className="copy-problem" role="status">{copyProblem}</p>}
   </aside>;

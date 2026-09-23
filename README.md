@@ -2,7 +2,14 @@
 
 IDHelper is a local-first browser application for reviewing one pasted report at a time. It highlights text that may be associated with SCONUM, BE/OSUFFIX, SK, EQPCODE, CENOT, or ELNOT identifiers, then generates a copyable synthetic identifier that matches the selected format.
 
+Synthetic BE Numbers use only `9999XX9999` or `9999-99999`, where `9` is a digit and `X` is an uppercase letter.
+BE Number + OSUFFIX values always use one space between the two parts, such as `9999XX9999 XX999` or `9999-99999 XX999`.
+
 Reports are analyzed in the browser using deterministic rules and do not need a network request.
+
+If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
+
+Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose an output format and then **Generate JSON**. Legacy output always uses the three required arrays. Entity-record output groups values by highlighted name and escapes the complete JSON array for insertion inside a prompt/completion JSON string.
 
 ## Optional local AI
 
@@ -44,7 +51,7 @@ The generated `dist` folder can be deployed to GitHub Pages, Netlify, Cloudflare
 
 ## Locked-down/offline fallback
 
-Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition has the core paste, highlight, review, raw-ID copy, EQPCODE-prefix, and integration-output features but does not include saved feedback/import-export or a local-model option.
+Open [IDHelper-Lite.html](IDHelper-Lite.html) directly in a modern browser for a self-contained, rules-only version. It uses no external dependencies, model downloads, or network requests, making it suitable for `file://` use on a restricted computer. The Lite edition includes manual missed-ID annotations, synthetic generation, raw-ID copy, EQPCODE-prefix selection, and selectable integration-output formats, but does not include saved feedback/import-export or a local-model option.
 
 ## Deploy to GitHub Pages
 
