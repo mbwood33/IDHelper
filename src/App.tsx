@@ -63,8 +63,8 @@ export default function App({ analyze, generateId }: AppProps) {
   const [generatedIds, setGeneratedIds] = useState<GeneratedIdentifiersByAnnotation>({});
   /** Most recently rendered JSON, cleared whenever its source state changes. */
   const [generatedJson, setGeneratedJson] = useState("");
-  /** Selectable downstream schema for the generated JSON panel. */
-  const [generatedJsonFormat, setGeneratedJsonFormat] = useState<GeneratedJsonFormat>("legacy");
+  /** Selectable downstream schema; entity records are the preferred default. */
+  const [generatedJsonFormat, setGeneratedJsonFormat] = useState<GeneratedJsonFormat>("records");
   /** Accessible human-readable result/status announcement. */
   const [status, setStatus] = useState("Rules-only analyzer ready. No report text leaves this browser.");
   /** Prevents overlapping rules analyses. */
