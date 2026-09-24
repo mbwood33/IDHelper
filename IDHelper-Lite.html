@@ -109,10 +109,10 @@
       /** Canonical legacy order, independent of report and generation order. */
       const legacyKeys = ["BE", "CENOT", "ELNOT", "EQP_CODE", "SCONUM", "SK"];
       /**
-       * Legacy contract required by the current integration: always provide
-       * BE, EQP_CODE, and SCONUM, plus CENOT, ELNOT, and SK when generated. One
-       * real value is scalar, repeated values are arrays, and absent original
-       * families remain `[""]`. EQPCODE uses the legacy `EQP_CODE` key.
+       * Legacy contract required by the current integration: include only
+       * generated ID families. One real value is scalar, repeated values
+       * are arrays, and no generated IDs produce the empty cue `[]`. EQPCODE
+       * uses the legacy `EQP_CODE` key.
        */
       function buildLegacyOutput() {
         const grouped = { BE: [], CENOT: [], ELNOT: [], EQP_CODE: [], SCONUM: [], SK: [] };
@@ -121,9 +121,8 @@
           if (key in grouped) grouped[key].push(entry.value);
         }
         for (const key of legacyKeys) {
-          // Only the three original keys retain placeholders when absent.
-          if (grouped[key].length === 0 && ["BE", "EQP_CODE", "SCONUM"].includes(key)) grouped[key] = [""];
-          else if (grouped[key].length === 0) delete grouped[key];
+          // Empty families are omitted; only real singleton values become scalars.
+          if (grouped[key].length === 0) delete grouped[key];
           else if (grouped[key].length === 1) grouped[key] = grouped[key][0];
         }
         return grouped;
@@ -142,6 +141,7 @@
             : JSON.stringify(identifiers);
           return `${JSON.stringify(key)}: ${value}`;
         });
+        if (!entries.length) return "[]";
         return JSON.stringify(`{${entries.join(", ")}}`).slice(1, -1);
       }
       /** Entity contract: merges all generated family values for each annotation under its exact name. */

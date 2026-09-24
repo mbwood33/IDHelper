@@ -43,7 +43,7 @@ export function GeneratedJsonPanel({ includedCount, value, format, onFormatChang
       </select>
     </label>
     <p>{format === "legacy"
-      ? "Orders legacy keys as BE, CENOT, ELNOT, EQP_CODE, SCONUM, and SK. One ID is a scalar; repeated IDs are arrays; original required keys retain their placeholder when missing."
+      ? "Orders present legacy keys as BE, CENOT, ELNOT, EQP_CODE, SCONUM, and SK. One ID is a scalar; repeated IDs are arrays; no generated IDs produce []."
       : "Groups generated IDs by highlighted name with escaped quotes and readable separator spacing for insertion inside another JSON string."}</p>
     <button className="button button--secondary" type="button" onClick={onGenerate}>Generate JSON</button>
     {value && <div className="json-export__output"><textarea aria-label="Generated JSON" readOnly value={value} rows={3} /><button className="button button--quiet" type="button" onClick={() => { void copy(); }}>{copied ? "Copied" : "Copy JSON"}</button></div>}

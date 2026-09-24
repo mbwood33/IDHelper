@@ -22,15 +22,9 @@ function annotation(id: string, text: string, start: number, types: IdType[]): C
 }
 
 describe("generated ID JSON", () => {
-  it("always emits escaped, spaced legacy keys and placeholder arrays", () => {
-    expect(buildGeneratedIdJsonObject([], {})).toEqual({
-      BE: [""],
-      EQP_CODE: [""],
-      SCONUM: [""],
-    });
-    expect(serializeGeneratedIdJson([], {}, "legacy")).toBe(
-      '{\\"BE\\": [\\"\\"], \\"EQP_CODE\\": [\\"\\"], \\"SCONUM\\": [\\"\\"]}',
-    );
+  it("omits empty legacy families and returns an empty cue when no IDs exist", () => {
+    expect(buildGeneratedIdJsonObject([], {})).toEqual({});
+    expect(serializeGeneratedIdJson([], {}, "legacy")).toBe("[]");
   });
 
   it("groups BE+OSUFFIX under BE and renames EQPCODE in legacy output", () => {

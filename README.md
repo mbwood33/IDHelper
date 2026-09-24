@@ -27,7 +27,7 @@ Generating an ID now adds it to an on-page integration output panel. Regeneratin
 
 The output-format selector supports:
 
-- **Legacy grouped values**, matching the embedded-string contract: `{\"BE\": [\"\"], \"EQP_CODE\": [\"\"], \"SCONUM\": [\"\"]}` when no IDs exist. Generated CENOT, ELNOT, and SK values are included, and all present keys follow the canonical BE, CENOT, ELNOT, EQP_CODE, SCONUM, SK order regardless of when their IDs were generated. One ID for a key is emitted as a scalar; two or more are emitted as an array. Quotes are escaped and spaces follow colons and commas for legibility.
+- **Legacy grouped values**, returning `[]` when no IDs have been generated. Generated values follow the canonical BE, CENOT, ELNOT, EQP_CODE, SCONUM, SK order regardless of when their IDs were generated. One ID for a key is emitted as a scalar; two or more are emitted as an array. Quotes are escaped and spaces follow colons and commas for legibility.
 - **Entity records**, grouping generated values by highlighted report name, for example `[{\"name\": \"Erving\", \"sconum\": \"A48217\"}]`. The displayed/copied value escapes quotes and retains spaces after colons and commas because the intended consumer embeds the array inside another JSON string.
 
 The record serializer already defines optional fields for all ID types. `latitude` and `longitude` are reserved in the TypeScript contract but are not emitted until a future coordinate-entry or extraction feature supplies them.

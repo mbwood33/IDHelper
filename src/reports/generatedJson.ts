@@ -19,11 +19,11 @@ export type GeneratedIdentifiersByAnnotation = Record<
 export type LegacyGeneratedIdValue = string | string[];
 
 export interface LegacyGeneratedIdJson {
-  BE: LegacyGeneratedIdValue;
+  BE?: LegacyGeneratedIdValue;
   CENOT?: LegacyGeneratedIdValue;
   ELNOT?: LegacyGeneratedIdValue;
-  EQP_CODE: LegacyGeneratedIdValue;
-  SCONUM: LegacyGeneratedIdValue;
+  EQP_CODE?: LegacyGeneratedIdValue;
+  SCONUM?: LegacyGeneratedIdValue;
   SK?: LegacyGeneratedIdValue;
 }
 
@@ -90,8 +90,8 @@ function collectIncludedIdentifiers(
 /**
  * Builds the prior grouped-value contract. BE+OSUFFIX is grouped under BE and
  * EQPCODE is renamed to EQP_CODE. A single generated value is emitted as a
- * scalar, while repeated values remain arrays. The original BE, EQP_CODE, and
- * SCONUM keys retain `[""]` when absent; CENOT, ELNOT, and SK appear when used.
+ * scalar, while repeated values remain arrays. Only identifier families with a
+ * generated value are included; an entirely empty export is serialized as `[]`.
  */
 export function buildGeneratedIdJsonObject(
   annotations: readonly CandidateAnnotation[],
@@ -110,18 +110,13 @@ export function buildGeneratedIdJsonObject(
     else if (item.type === "SK") grouped.SK.push(item.value);
   }
 
-  // Only the original required families receive a placeholder when absent.
-  const normalizeRequired = (values: string[]): LegacyGeneratedIdValue => {
-    if (!values.length) return [""];
-    return values.length === 1 ? values[0] : values;
-  };
   const normalizePresent = (values: string[]): LegacyGeneratedIdValue => values.length === 1 ? values[0] : values;
   return {
-    BE: normalizeRequired(grouped.BE),
+    ...(grouped.BE.length ? { BE: normalizePresent(grouped.BE) } : {}),
     ...(grouped.CENOT.length ? { CENOT: normalizePresent(grouped.CENOT) } : {}),
     ...(grouped.ELNOT.length ? { ELNOT: normalizePresent(grouped.ELNOT) } : {}),
-    EQP_CODE: normalizeRequired(grouped.EQP_CODE),
-    SCONUM: normalizeRequired(grouped.SCONUM),
+    ...(grouped.EQP_CODE.length ? { EQP_CODE: normalizePresent(grouped.EQP_CODE) } : {}),
+    ...(grouped.SCONUM.length ? { SCONUM: normalizePresent(grouped.SCONUM) } : {}),
     ...(grouped.SK.length ? { SK: normalizePresent(grouped.SK) } : {}),
   };
 }
@@ -171,6 +166,8 @@ function serializeLegacyGeneratedIds(value: LegacyGeneratedIdJson): string {
       : JSON.stringify(identifiers);
     entries.push(`${JSON.stringify(key)}: ${serializedValue}`);
   }
+  // `[]` is the established empty cue, rather than an object of blank values.
+  if (!entries.length) return "[]";
   return `{${entries.join(", ")}}`;
 }
 
