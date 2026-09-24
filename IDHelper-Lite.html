@@ -45,7 +45,7 @@
       <h2 id="json-heading">Generated ID JSON</h2>
       <p class="small">Only values you generate are included. Regenerating the same annotation and ID type replaces its prior value.</p>
       <div class="format-toggle" role="radiogroup" aria-label="JSON output format">
-        <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped arrays</label>
+        <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped arrays (escaped and spaced)</label>
         <label><input type="radio" name="json-format" value="records"> Entity records (escaped for JSON-within-JSON)</label>
       </div>
       <textarea id="json-output" readonly aria-label="Generated identifier JSON">{}</textarea>
@@ -123,18 +123,34 @@
         }
         return grouped;
       }
+      /**
+       * Preserves the original legacy text contract: a one-line object with
+       * spaces after separators and escaped quotes for an outer JSON string.
+       * Each key and identifier is JSON-stringified independently so future
+       * values containing JSON-sensitive characters remain valid.
+       */
+      function serializeLegacyOutput(grouped) {
+        const entries = Object.entries(grouped).map(([key, identifiers]) => {
+          const values = identifiers.map((identifier) => JSON.stringify(identifier)).join(", ");
+          return `${JSON.stringify(key)}: [${values}]`;
+        });
+        return JSON.stringify(`{${entries.join(", ")}}`).slice(1, -1);
+      }
       /** Entity contract: merges all generated family values for each annotation under its exact name. */
       function buildRecordOutput() { const records = new Map(); for (const entry of generatedIds.values()) { const record = records.get(entry.annotation.id) ?? { name: entry.annotation.text }; record[recordPropertyName(entry.type)] = entry.value; records.set(entry.annotation.id, record); } return [...records.values()]; }
       /**
-       * Renders selected output mode. Record mode serializes the complete JSON
-       * document as a JSON string, then removes only its enclosing quotes. This
-       * preserves escaping for quotes, backslashes, newlines, and all other
-       * JSON-sensitive content when pasted into a JSON-within-JSON field.
+       * Renders the selected compatibility contract. Both modes produce text
+       * intended for a JSON-within-JSON field; legacy mode uses its historical
+       * readable separators while record mode remains compact.
        */
       function renderJsonOutput() {
         const mode = document.querySelector('input[name="json-format"]:checked').value;
-        const json = JSON.stringify(mode === "legacy" ? buildLegacyOutput() : buildRecordOutput());
-        jsonOutput.value = mode === "records" ? JSON.stringify(json).slice(1, -1) : json;
+        if (mode === "legacy") {
+          jsonOutput.value = serializeLegacyOutput(buildLegacyOutput());
+          return;
+        }
+        const recordJson = JSON.stringify(buildRecordOutput());
+        jsonOutput.value = JSON.stringify(recordJson).slice(1, -1);
       }
       /**
        * Converts the exact textarea selection into a user-reviewed annotation.

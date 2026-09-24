@@ -22,6 +22,9 @@ export interface LegacyGeneratedIdJson {
   EQP_CODE: string[];
 }
 
+/** Required legacy property order; downstream examples and snapshots rely on it. */
+const LEGACY_JSON_KEYS: readonly (keyof LegacyGeneratedIdJson)[] = ["SCONUM", "BE", "EQP_CODE"];
+
 /** One entity-centric record used by the proposed supervisor output contract. */
 export interface GeneratedEntityRecord {
   name: string;
@@ -131,8 +134,23 @@ export function escapeJsonForEmbedding(json: string): string {
 }
 
 /**
- * Serializes the selected contract. Legacy output is ordinary compact JSON;
- * record output is the requested JSON-within-JSON fragment.
+ * Serializes the legacy object without indentation while retaining spaces after
+ * separators. Building from JSON.stringify-ed keys and values avoids corrupting
+ * any JSON-sensitive characters that may appear in future identifier formats.
+ */
+function serializeLegacyGeneratedIds(value: LegacyGeneratedIdJson): string {
+  const entries = LEGACY_JSON_KEYS.map((key) => {
+    const identifiers = value[key];
+    const serializedIdentifiers = identifiers.map((identifier) => JSON.stringify(identifier)).join(", ");
+    return `${JSON.stringify(key)}: [${serializedIdentifiers}]`;
+  });
+  return `{${entries.join(", ")}}`;
+}
+
+/**
+ * Serializes the selected downstream contract. Both modes are escaped fragments
+ * intended for an outer JSON string. Legacy mode additionally retains readable
+ * spaces after colons and commas to match the established integration format.
  */
 export function serializeGeneratedIdJson(
   annotations: readonly CandidateAnnotation[],
@@ -140,7 +158,8 @@ export function serializeGeneratedIdJson(
   format: GeneratedJsonFormat = "legacy",
 ): string {
   if (format === "legacy") {
-    return JSON.stringify(buildGeneratedIdJsonObject(annotations, generated));
+    const readableJson = serializeLegacyGeneratedIds(buildGeneratedIdJsonObject(annotations, generated));
+    return escapeJsonForEmbedding(readableJson);
   }
 
   return escapeJsonForEmbedding(JSON.stringify(buildGeneratedEntityRecords(annotations, generated)));

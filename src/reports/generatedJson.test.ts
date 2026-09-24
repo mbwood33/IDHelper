@@ -22,14 +22,14 @@ function annotation(id: string, text: string, start: number, types: IdType[]): C
 }
 
 describe("generated ID JSON", () => {
-  it("always emits the exact legacy keys and placeholder arrays", () => {
+  it("always emits escaped, spaced legacy keys and placeholder arrays", () => {
     expect(buildGeneratedIdJsonObject([], {})).toEqual({
       SCONUM: [""],
       BE: [""],
       EQP_CODE: [""],
     });
     expect(serializeGeneratedIdJson([], {}, "legacy")).toBe(
-      '{"SCONUM":[""],"BE":[""],"EQP_CODE":[""]}',
+      '{\\"SCONUM\\": [\\"\\"], \\"BE\\": [\\"\\"], \\"EQP_CODE\\": [\\"\\"]}',
     );
   });
 
@@ -51,6 +51,33 @@ describe("generated ID JSON", () => {
       BE: ["1234AB5678 CD901"],
       EQP_CODE: ["GABCD"],
     });
+    // This exact text is pasted into an outer prompt/completion JSON string.
+    expect(serializeGeneratedIdJson(annotations, generated, "legacy")).toBe(
+      '{\\"SCONUM\\": [\\"A12345\\"], \\"BE\\": [\\"1234AB5678 CD901\\"], \\"EQP_CODE\\": [\\"GABCD\\"]}',
+    );
+  });
+
+  it("preserves the exact escaped and spaced legacy contract for multiple values", () => {
+    const annotations = [
+      annotation("ship-1", "First ship", 0, ["SCONUM"]),
+      annotation("ship-2", "Second ship", 20, ["SCONUM"]),
+      annotation("site-1", "First site", 40, ["BE"]),
+      annotation("site-2", "Second site", 60, ["BE"]),
+      annotation("equipment-1", "First equipment", 80, ["EQPCODE"]),
+      annotation("equipment-2", "Second equipment", 100, ["EQPCODE"]),
+    ];
+    const generated: GeneratedIdentifiersByAnnotation = {
+      "ship-1": { SCONUM: { value: "N97587", included: true } },
+      "ship-2": { SCONUM: { value: "J15843", included: true } },
+      "site-1": { BE: { value: "6750-51560", included: true } },
+      "site-2": { BE: { value: "5027-89450", included: true } },
+      "equipment-1": { EQPCODE: { value: "GDHVD", included: true } },
+      "equipment-2": { EQPCODE: { value: "SBJIC", included: true } },
+    };
+
+    expect(serializeGeneratedIdJson(annotations, generated, "legacy")).toBe(
+      '{\\"SCONUM\\": [\\"N97587\\", \\"J15843\\"], \\"BE\\": [\\"6750-51560\\", \\"5027-89450\\"], \\"EQP_CODE\\": [\\"GDHVD\\", \\"SBJIC\\"]}',
+    );
   });
 
   it("combines multiple ID families into one entity record in report order", () => {
