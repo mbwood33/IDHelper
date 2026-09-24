@@ -19,13 +19,18 @@ export type GeneratedIdentifiersByAnnotation = Record<
 export type LegacyGeneratedIdValue = string | string[];
 
 export interface LegacyGeneratedIdJson {
-  SCONUM: LegacyGeneratedIdValue;
   BE: LegacyGeneratedIdValue;
+  CENOT?: LegacyGeneratedIdValue;
+  ELNOT?: LegacyGeneratedIdValue;
   EQP_CODE: LegacyGeneratedIdValue;
+  SCONUM: LegacyGeneratedIdValue;
+  SK?: LegacyGeneratedIdValue;
 }
 
-/** Required legacy property order; downstream examples and snapshots rely on it. */
-const LEGACY_JSON_KEYS: readonly (keyof LegacyGeneratedIdJson)[] = ["SCONUM", "BE", "EQP_CODE"];
+/** Canonical legacy property order, independent of report or generation order. */
+const LEGACY_JSON_KEYS: readonly (keyof LegacyGeneratedIdJson)[] = [
+  "BE", "CENOT", "ELNOT", "EQP_CODE", "SCONUM", "SK",
+];
 
 /** One entity-centric record used by the proposed supervisor output contract. */
 export interface GeneratedEntityRecord {
@@ -83,32 +88,41 @@ function collectIncludedIdentifiers(
 }
 
 /**
- * Builds the prior grouped-value contract. BE+OSUFFIX is grouped under BE,
- * EQPCODE is renamed to EQP_CODE, and unsupported legacy families are skipped.
- * A single generated value is emitted as a scalar, while repeated values remain
- * arrays. Every required key retains `[""]` when it has no generated value.
+ * Builds the prior grouped-value contract. BE+OSUFFIX is grouped under BE and
+ * EQPCODE is renamed to EQP_CODE. A single generated value is emitted as a
+ * scalar, while repeated values remain arrays. The original BE, EQP_CODE, and
+ * SCONUM keys retain `[""]` when absent; CENOT, ELNOT, and SK appear when used.
  */
 export function buildGeneratedIdJsonObject(
   annotations: readonly CandidateAnnotation[],
   generated: GeneratedIdentifiersByAnnotation,
 ): LegacyGeneratedIdJson {
-  const grouped: Record<keyof LegacyGeneratedIdJson, string[]> = { SCONUM: [], BE: [], EQP_CODE: [] };
+  const grouped: Record<keyof LegacyGeneratedIdJson, string[]> = {
+    BE: [], CENOT: [], ELNOT: [], EQP_CODE: [], SCONUM: [], SK: [],
+  };
 
   for (const item of collectIncludedIdentifiers(annotations, generated)) {
-    if (item.type === "SCONUM") grouped.SCONUM.push(item.value);
-    else if (item.type === "BE" || item.type === "BE_OSUFFIX") grouped.BE.push(item.value);
+    if (item.type === "BE" || item.type === "BE_OSUFFIX") grouped.BE.push(item.value);
+    else if (item.type === "CENOT") grouped.CENOT.push(item.value);
+    else if (item.type === "ELNOT") grouped.ELNOT.push(item.value);
     else if (item.type === "EQPCODE") grouped.EQP_CODE.push(item.value);
+    else if (item.type === "SCONUM") grouped.SCONUM.push(item.value);
+    else if (item.type === "SK") grouped.SK.push(item.value);
   }
 
-  // Empty arrays keep the historical placeholder; only actual single IDs collapse.
-  const normalize = (values: string[]): LegacyGeneratedIdValue => {
+  // Only the original required families receive a placeholder when absent.
+  const normalizeRequired = (values: string[]): LegacyGeneratedIdValue => {
     if (!values.length) return [""];
     return values.length === 1 ? values[0] : values;
   };
+  const normalizePresent = (values: string[]): LegacyGeneratedIdValue => values.length === 1 ? values[0] : values;
   return {
-    SCONUM: normalize(grouped.SCONUM),
-    BE: normalize(grouped.BE),
-    EQP_CODE: normalize(grouped.EQP_CODE),
+    BE: normalizeRequired(grouped.BE),
+    ...(grouped.CENOT.length ? { CENOT: normalizePresent(grouped.CENOT) } : {}),
+    ...(grouped.ELNOT.length ? { ELNOT: normalizePresent(grouped.ELNOT) } : {}),
+    EQP_CODE: normalizeRequired(grouped.EQP_CODE),
+    SCONUM: normalizeRequired(grouped.SCONUM),
+    ...(grouped.SK.length ? { SK: normalizePresent(grouped.SK) } : {}),
   };
 }
 
@@ -148,13 +162,15 @@ export function escapeJsonForEmbedding(json: string): string {
  * any JSON-sensitive characters that may appear in future identifier formats.
  */
 function serializeLegacyGeneratedIds(value: LegacyGeneratedIdJson): string {
-  const entries = LEGACY_JSON_KEYS.map((key) => {
+  const entries: string[] = [];
+  for (const key of LEGACY_JSON_KEYS) {
     const identifiers = value[key];
+    if (identifiers === undefined) continue;
     const serializedValue = Array.isArray(identifiers)
       ? `[${identifiers.map((identifier) => JSON.stringify(identifier)).join(", ")}]`
       : JSON.stringify(identifiers);
-    return `${JSON.stringify(key)}: ${serializedValue}`;
-  });
+    entries.push(`${JSON.stringify(key)}: ${serializedValue}`);
+  }
   return `{${entries.join(", ")}}`;
 }
 

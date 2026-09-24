@@ -106,21 +106,24 @@
       }
       /** Maps internal ID labels to the supervisor-requested entity-record property names. */
       function recordPropertyName(type) { return { SCONUM: "sconum", BE: "be", BE_OSUFFIX: "be_osuffix", SK: "sk", EQPCODE: "eqpcode", CENOT: "cenot", ELNOT: "elnot" }[type]; }
+      /** Canonical legacy order, independent of report and generation order. */
+      const legacyKeys = ["BE", "CENOT", "ELNOT", "EQP_CODE", "SCONUM", "SK"];
       /**
        * Legacy contract required by the current integration: always provide
-       * SCONUM, BE, and EQP_CODE. One real value is scalar, repeated values are
-       * arrays, and an absent family remains `[""]`. Other supported identifier
-       * types are omitted; EQPCODE is renamed to the legacy `EQP_CODE` key.
+       * BE, EQP_CODE, and SCONUM, plus CENOT, ELNOT, and SK when generated. One
+       * real value is scalar, repeated values are arrays, and absent original
+       * families remain `[""]`. EQPCODE uses the legacy `EQP_CODE` key.
        */
       function buildLegacyOutput() {
-        const grouped = { SCONUM: [], BE: [], EQP_CODE: [] };
+        const grouped = { BE: [], CENOT: [], ELNOT: [], EQP_CODE: [], SCONUM: [], SK: [] };
         for (const entry of generatedIds.values()) {
           const key = entry.type === "EQPCODE" ? "EQP_CODE" : entry.type === "BE_OSUFFIX" ? "BE" : entry.type;
           if (key in grouped) grouped[key].push(entry.value);
         }
-        for (const key of Object.keys(grouped)) {
-          // Missing families keep the legacy placeholder; actual single IDs become scalars.
-          if (grouped[key].length === 0) grouped[key] = [""];
+        for (const key of legacyKeys) {
+          // Only the three original keys retain placeholders when absent.
+          if (grouped[key].length === 0 && ["BE", "EQP_CODE", "SCONUM"].includes(key)) grouped[key] = [""];
+          else if (grouped[key].length === 0) delete grouped[key];
           else if (grouped[key].length === 1) grouped[key] = grouped[key][0];
         }
         return grouped;
@@ -132,7 +135,8 @@
        * values containing JSON-sensitive characters remain valid.
        */
       function serializeLegacyOutput(grouped) {
-        const entries = Object.entries(grouped).map(([key, identifiers]) => {
+        const entries = legacyKeys.filter((key) => key in grouped).map((key) => {
+          const identifiers = grouped[key];
           const value = Array.isArray(identifiers)
             ? `[${identifiers.map((identifier) => JSON.stringify(identifier)).join(", ")}]`
             : JSON.stringify(identifiers);

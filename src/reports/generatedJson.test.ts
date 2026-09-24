@@ -24,12 +24,12 @@ function annotation(id: string, text: string, start: number, types: IdType[]): C
 describe("generated ID JSON", () => {
   it("always emits escaped, spaced legacy keys and placeholder arrays", () => {
     expect(buildGeneratedIdJsonObject([], {})).toEqual({
-      SCONUM: [""],
       BE: [""],
       EQP_CODE: [""],
+      SCONUM: [""],
     });
     expect(serializeGeneratedIdJson([], {}, "legacy")).toBe(
-      '{\\"SCONUM\\": [\\"\\"], \\"BE\\": [\\"\\"], \\"EQP_CODE\\": [\\"\\"]}',
+      '{\\"BE\\": [\\"\\"], \\"EQP_CODE\\": [\\"\\"], \\"SCONUM\\": [\\"\\"]}',
     );
   });
 
@@ -47,13 +47,13 @@ describe("generated ID JSON", () => {
     };
 
     expect(buildGeneratedIdJsonObject(annotations, generated)).toEqual({
-      SCONUM: "A12345",
       BE: "1234AB5678 CD901",
       EQP_CODE: "GABCD",
+      SCONUM: "A12345",
     });
     // This exact text is pasted into an outer prompt/completion JSON string.
     expect(serializeGeneratedIdJson(annotations, generated, "legacy")).toBe(
-      '{\\"SCONUM\\": \\"A12345\\", \\"BE\\": \\"1234AB5678 CD901\\", \\"EQP_CODE\\": \\"GABCD\\"}',
+      '{\\"BE\\": \\"1234AB5678 CD901\\", \\"EQP_CODE\\": \\"GABCD\\", \\"SCONUM\\": \\"A12345\\"}',
     );
   });
 
@@ -74,7 +74,30 @@ describe("generated ID JSON", () => {
     };
 
     expect(serializeGeneratedIdJson(annotations, generated, "legacy")).toBe(
-      '{\\"SCONUM\\": [\\"N97587\\", \\"J15843\\"], \\"BE\\": [\\"6750-51560\\", \\"5027-89450\\"], \\"EQP_CODE\\": \\"GDHVD\\"}',
+      '{\\"BE\\": [\\"6750-51560\\", \\"5027-89450\\"], \\"EQP_CODE\\": \\"GDHVD\\", \\"SCONUM\\": [\\"N97587\\", \\"J15843\\"]}',
+    );
+  });
+
+  it("orders every generated legacy family canonically instead of by report order", () => {
+    const annotations = [
+      annotation("sk", "SK entity", 0, ["SK"]),
+      annotation("sconum", "Ship", 10, ["SCONUM"]),
+      annotation("eqpcode", "Equipment", 20, ["EQPCODE"]),
+      annotation("elnot", "Electronic signal", 30, ["ELNOT"]),
+      annotation("cenot", "Communications signal", 40, ["CENOT"]),
+      annotation("be", "Facility", 50, ["BE"]),
+    ];
+    const generated: GeneratedIdentifiersByAnnotation = {
+      sk: { SK: { value: "00000000001000", included: true } },
+      sconum: { SCONUM: { value: "A12345", included: true } },
+      eqpcode: { EQPCODE: { value: "GABCD", included: true } },
+      elnot: { ELNOT: { value: "A123B", included: true } },
+      cenot: { CENOT: { value: "AB123", included: true } },
+      be: { BE: { value: "1234AB5678", included: true } },
+    };
+
+    expect(serializeGeneratedIdJson(annotations, generated, "legacy")).toBe(
+      '{\\"BE\\": \\"1234AB5678\\", \\"CENOT\\": \\"AB123\\", \\"ELNOT\\": \\"A123B\\", \\"EQP_CODE\\": \\"GABCD\\", \\"SCONUM\\": \\"A12345\\", \\"SK\\": \\"00000000001000\\"}',
     );
   });
 
