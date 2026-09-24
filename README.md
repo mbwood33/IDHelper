@@ -9,7 +9,7 @@ Reports are analyzed in the browser using deterministic rules and do not need a 
 
 If analysis misses a location, select the exact words in the source report and choose **Add missed ID**. Specify the entity class, one or more identifier types, and an EQPCODE category when applicable. The manual highlight opens in the normal annotation panel, where synthetic identifiers can be generated, regenerated, and copied. Manual annotations remain present when rules are rerun on the unchanged report.
 
-Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose an output format and then **Generate JSON**. Legacy output always uses the three required arrays with escaped quotes and readable separator spacing. Entity-record output groups values by highlighted name with the same escaping and readable spacing for insertion inside a prompt/completion JSON string.
+Generated identifiers default to **Include this ID in JSON**. This checkbox affects only report JSON output; it does not accept, reject, or teach from an annotation. Choose an output format and then **Generate JSON**. Legacy output always uses the three required keys with escaped quotes and readable separator spacing; a single generated ID is a scalar and repeated IDs are arrays. Entity-record output groups values by highlighted name with the same escaping and readable spacing for insertion inside a prompt/completion JSON string.
 
 ## Optional local AI
 
@@ -27,7 +27,7 @@ Generating an ID now adds it to an on-page integration output panel. Regeneratin
 
 The output-format selector supports:
 
-- **Legacy grouped arrays**, matching the existing embedded-string contract exactly: `{\"SCONUM\": [\"\"], \"BE\": [\"\"], \"EQP_CODE\": [\"\"]}`. Quotes are escaped and spaces follow colons and commas for legibility. Once a value exists it replaces that key's empty-string placeholder. ID types not represented by the older contract are omitted from this view.
+- **Legacy grouped values**, matching the existing embedded-string contract exactly: `{\"SCONUM\": [\"\"], \"BE\": [\"\"], \"EQP_CODE\": [\"\"]}` when no IDs exist. One generated ID for a key is emitted as a scalar; two or more are emitted as an array. Quotes are escaped and spaces follow colons and commas for legibility. ID types not represented by the older contract are omitted from this view.
 - **Entity records**, grouping generated values by highlighted report name, for example `[{\"name\": \"Erving\", \"sconum\": \"A48217\"}]`. The displayed/copied value escapes quotes and retains spaces after colons and commas because the intended consumer embeds the array inside another JSON string.
 
 The record serializer already defines optional fields for all ID types. `latitude` and `longitude` are reserved in the TypeScript contract but are not emitted until a future coordinate-entry or extraction feature supplies them.

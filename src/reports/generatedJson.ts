@@ -16,10 +16,12 @@ export type GeneratedIdentifiersByAnnotation = Record<
 >;
 
 /** Exact legacy schema expected by the existing downstream integration. */
+export type LegacyGeneratedIdValue = string | string[];
+
 export interface LegacyGeneratedIdJson {
-  SCONUM: string[];
-  BE: string[];
-  EQP_CODE: string[];
+  SCONUM: LegacyGeneratedIdValue;
+  BE: LegacyGeneratedIdValue;
+  EQP_CODE: LegacyGeneratedIdValue;
 }
 
 /** Required legacy property order; downstream examples and snapshots rely on it. */
@@ -81,26 +83,33 @@ function collectIncludedIdentifiers(
 }
 
 /**
- * Builds the prior object-of-arrays contract. BE+OSUFFIX is grouped under BE,
+ * Builds the prior grouped-value contract. BE+OSUFFIX is grouped under BE,
  * EQPCODE is renamed to EQP_CODE, and unsupported legacy families are skipped.
- * Every required key receives `[""]` when it has no generated value.
+ * A single generated value is emitted as a scalar, while repeated values remain
+ * arrays. Every required key retains `[""]` when it has no generated value.
  */
 export function buildGeneratedIdJsonObject(
   annotations: readonly CandidateAnnotation[],
   generated: GeneratedIdentifiersByAnnotation,
 ): LegacyGeneratedIdJson {
-  const result: LegacyGeneratedIdJson = { SCONUM: [], BE: [], EQP_CODE: [] };
+  const grouped: Record<keyof LegacyGeneratedIdJson, string[]> = { SCONUM: [], BE: [], EQP_CODE: [] };
 
   for (const item of collectIncludedIdentifiers(annotations, generated)) {
-    if (item.type === "SCONUM") result.SCONUM.push(item.value);
-    else if (item.type === "BE" || item.type === "BE_OSUFFIX") result.BE.push(item.value);
-    else if (item.type === "EQPCODE") result.EQP_CODE.push(item.value);
+    if (item.type === "SCONUM") grouped.SCONUM.push(item.value);
+    else if (item.type === "BE" || item.type === "BE_OSUFFIX") grouped.BE.push(item.value);
+    else if (item.type === "EQPCODE") grouped.EQP_CODE.push(item.value);
   }
 
-  if (!result.SCONUM.length) result.SCONUM.push("");
-  if (!result.BE.length) result.BE.push("");
-  if (!result.EQP_CODE.length) result.EQP_CODE.push("");
-  return result;
+  // Empty arrays keep the historical placeholder; only actual single IDs collapse.
+  const normalize = (values: string[]): LegacyGeneratedIdValue => {
+    if (!values.length) return [""];
+    return values.length === 1 ? values[0] : values;
+  };
+  return {
+    SCONUM: normalize(grouped.SCONUM),
+    BE: normalize(grouped.BE),
+    EQP_CODE: normalize(grouped.EQP_CODE),
+  };
 }
 
 /**
@@ -141,8 +150,10 @@ export function escapeJsonForEmbedding(json: string): string {
 function serializeLegacyGeneratedIds(value: LegacyGeneratedIdJson): string {
   const entries = LEGACY_JSON_KEYS.map((key) => {
     const identifiers = value[key];
-    const serializedIdentifiers = identifiers.map((identifier) => JSON.stringify(identifier)).join(", ");
-    return `${JSON.stringify(key)}: [${serializedIdentifiers}]`;
+    const serializedValue = Array.isArray(identifiers)
+      ? `[${identifiers.map((identifier) => JSON.stringify(identifier)).join(", ")}]`
+      : JSON.stringify(identifiers);
+    return `${JSON.stringify(key)}: ${serializedValue}`;
   });
   return `{${entries.join(", ")}}`;
 }

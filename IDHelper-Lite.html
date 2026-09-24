@@ -45,7 +45,7 @@
       <h2 id="json-heading">Generated ID JSON</h2>
       <p class="small">Only values you generate are included. Regenerating the same annotation and ID type replaces its prior value.</p>
       <div class="format-toggle" role="radiogroup" aria-label="JSON output format">
-        <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped arrays (escaped and spaced)</label>
+        <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped values (escaped and spaced)</label>
         <label><input type="radio" name="json-format" value="records"> Entity records (escaped and spaced)</label>
       </div>
       <textarea id="json-output" readonly aria-label="Generated identifier JSON">{}</textarea>
@@ -108,9 +108,9 @@
       function recordPropertyName(type) { return { SCONUM: "sconum", BE: "be", BE_OSUFFIX: "be_osuffix", SK: "sk", EQPCODE: "eqpcode", CENOT: "cenot", ELNOT: "elnot" }[type]; }
       /**
        * Legacy contract required by the current integration: always provide
-       * SCONUM, BE, and EQP_CODE arrays, using `[""]` until values are generated.
-       * Other supported identifier types deliberately do not appear
-       * in this older schema. EQPCODE is renamed to its legacy `EQP_CODE` key.
+       * SCONUM, BE, and EQP_CODE. One real value is scalar, repeated values are
+       * arrays, and an absent family remains `[""]`. Other supported identifier
+       * types are omitted; EQPCODE is renamed to the legacy `EQP_CODE` key.
        */
       function buildLegacyOutput() {
         const grouped = { SCONUM: [], BE: [], EQP_CODE: [] };
@@ -119,7 +119,9 @@
           if (key in grouped) grouped[key].push(entry.value);
         }
         for (const key of Object.keys(grouped)) {
-          if (grouped[key].length === 0) grouped[key].push("");
+          // Missing families keep the legacy placeholder; actual single IDs become scalars.
+          if (grouped[key].length === 0) grouped[key] = [""];
+          else if (grouped[key].length === 1) grouped[key] = grouped[key][0];
         }
         return grouped;
       }
@@ -131,8 +133,10 @@
        */
       function serializeLegacyOutput(grouped) {
         const entries = Object.entries(grouped).map(([key, identifiers]) => {
-          const values = identifiers.map((identifier) => JSON.stringify(identifier)).join(", ");
-          return `${JSON.stringify(key)}: [${values}]`;
+          const value = Array.isArray(identifiers)
+            ? `[${identifiers.map((identifier) => JSON.stringify(identifier)).join(", ")}]`
+            : JSON.stringify(identifiers);
+          return `${JSON.stringify(key)}: ${value}`;
         });
         return JSON.stringify(`{${entries.join(", ")}}`).slice(1, -1);
       }
