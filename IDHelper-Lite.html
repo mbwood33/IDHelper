@@ -46,7 +46,7 @@
       <p class="small">Only values you generate are included. Regenerating the same annotation and ID type replaces its prior value.</p>
       <div class="format-toggle" role="radiogroup" aria-label="JSON output format">
         <label><input type="radio" name="json-format" value="legacy" checked> Legacy grouped arrays (escaped and spaced)</label>
-        <label><input type="radio" name="json-format" value="records"> Entity records (escaped for JSON-within-JSON)</label>
+        <label><input type="radio" name="json-format" value="records"> Entity records (escaped and spaced)</label>
       </div>
       <textarea id="json-output" readonly aria-label="Generated identifier JSON">{}</textarea>
       <div class="actions"><button id="copy-json" class="secondary">Copy JSON</button><button id="clear-json" class="secondary">Clear generated IDs</button></div>
@@ -139,9 +139,20 @@
       /** Entity contract: merges all generated family values for each annotation under its exact name. */
       function buildRecordOutput() { const records = new Map(); for (const entry of generatedIds.values()) { const record = records.get(entry.annotation.id) ?? { name: entry.annotation.text }; record[recordPropertyName(entry.type)] = entry.value; records.set(entry.annotation.id, record); } return [...records.values()]; }
       /**
+       * Formats entity records with spaces only at structural separators. Keys
+       * and values are serialized separately so punctuation inside names or IDs
+       * cannot be mistaken for JSON syntax.
+       */
+      function serializeRecordOutput(records) {
+        const serializedRecords = records.map((record) => {
+          const properties = Object.entries(record).map(([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(value)}`);
+          return `{${properties.join(", ")}}`;
+        });
+        return `[${serializedRecords.join(", ")}]`;
+      }
+      /**
        * Renders the selected compatibility contract. Both modes produce text
-       * intended for a JSON-within-JSON field; legacy mode uses its historical
-       * readable separators while record mode remains compact.
+       * intended for a JSON-within-JSON field and use readable separators.
        */
       function renderJsonOutput() {
         const mode = document.querySelector('input[name="json-format"]:checked').value;
@@ -149,7 +160,7 @@
           jsonOutput.value = serializeLegacyOutput(buildLegacyOutput());
           return;
         }
-        const recordJson = JSON.stringify(buildRecordOutput());
+        const recordJson = serializeRecordOutput(buildRecordOutput());
         jsonOutput.value = JSON.stringify(recordJson).slice(1, -1);
       }
       /**

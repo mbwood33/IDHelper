@@ -39,12 +39,12 @@ export function GeneratedJsonPanel({ includedCount, value, format, onFormatChang
     <label className="json-format-control">Output format
       <select value={format} onChange={(event) => onFormatChange(event.target.value as GeneratedJsonFormat)}>
         <option value="legacy">Legacy grouped arrays — escaped and spaced</option>
-        <option value="records">Entity records — escaped JSON within JSON</option>
+        <option value="records">Entity records — escaped and spaced</option>
       </select>
     </label>
     <p>{format === "legacy"
       ? "Produces escaped, readable SCONUM, BE, and EQP_CODE arrays for an outer JSON string. Missing values use the existing empty-string placeholder."
-      : "Groups generated IDs by highlighted name and escapes the complete array for insertion inside another JSON string."}</p>
+      : "Groups generated IDs by highlighted name with escaped quotes and readable separator spacing for insertion inside another JSON string."}</p>
     <button className="button button--secondary" type="button" onClick={onGenerate}>Generate JSON</button>
     {value && <div className="json-export__output"><textarea aria-label="Generated JSON" readOnly value={value} rows={3} /><button className="button button--quiet" type="button" onClick={() => { void copy(); }}>{copied ? "Copied" : "Copy JSON"}</button></div>}
     {copyProblem && <p className="copy-problem" role="status">{copyProblem}</p>}

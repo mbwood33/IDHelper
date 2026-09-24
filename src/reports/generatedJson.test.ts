@@ -99,14 +99,14 @@ describe("generated ID JSON", () => {
     ]);
   });
 
-  it("escapes record JSON for insertion inside an outer JSON string", () => {
+  it("escapes and spaces record JSON for insertion inside an outer JSON string", () => {
     const annotations = [annotation("quoted", 'test "1"', 0, ["SCONUM"])];
     const generated: GeneratedIdentifiersByAnnotation = {
       quoted: { SCONUM: { value: "A12345", included: true } },
     };
 
     expect(serializeGeneratedIdJson(annotations, generated, "records")).toBe(
-      '[{\\"name\\":\\"test \\\\\\"1\\\\\\"\\",\\"sconum\\":\\"A12345\\"}]',
+      '[{\\"name\\": \\"test \\\\\\"1\\\\\\"\\", \\"sconum\\": \\"A12345\\"}]',
     );
   });
 

@@ -148,9 +148,24 @@ function serializeLegacyGeneratedIds(value: LegacyGeneratedIdJson): string {
 }
 
 /**
+ * Serializes entity records on one line with readable structural spacing.
+ * Stringifying each property independently preserves valid escaping without a
+ * regex pass that could accidentally alter commas or colons inside a value.
+ */
+function serializeGeneratedEntityRecords(records: readonly GeneratedEntityRecord[]): string {
+  const serializedRecords = records.map((record) => {
+    const properties = Object.entries(record)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(value)}`);
+    return `{${properties.join(", ")}}`;
+  });
+  return `[${serializedRecords.join(", ")}]`;
+}
+
+/**
  * Serializes the selected downstream contract. Both modes are escaped fragments
- * intended for an outer JSON string. Legacy mode additionally retains readable
- * spaces after colons and commas to match the established integration format.
+ * intended for an outer JSON string. Both retain readable spaces after colons
+ * and commas while preserving their distinct grouped and entity schemas.
  */
 export function serializeGeneratedIdJson(
   annotations: readonly CandidateAnnotation[],
@@ -162,7 +177,8 @@ export function serializeGeneratedIdJson(
     return escapeJsonForEmbedding(readableJson);
   }
 
-  return escapeJsonForEmbedding(JSON.stringify(buildGeneratedEntityRecords(annotations, generated)));
+  const readableJson = serializeGeneratedEntityRecords(buildGeneratedEntityRecords(annotations, generated));
+  return escapeJsonForEmbedding(readableJson);
 }
 
 /** Returns the number of included values across every supported ID family. */
